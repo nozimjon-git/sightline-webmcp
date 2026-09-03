@@ -3,6 +3,12 @@
 An incident war room a human and an AI agent investigate **together, on the same
 screen**, over [WebMCP](https://github.com/webmachinelearning/webmcp).
 
+**[Open the live demo](https://sightline-webmcp.netlify.app/)** ·
+**[Browse the source](https://github.com/nozimjon-git/sightline-webmcp)** ·
+**[Read the 3-minute demo script](docs/demo-script.md)**
+
+![Sightline incident workspace](docs/sightline-overview.jpg)
+
 There is no chat panel in this app. The agent is whatever WebMCP host you open
 the page in — ChatGPT, or Chrome 149+ with the WebMCP origin trial. The page
 registers nine tools; when the agent calls one, the console visibly changes, and
@@ -15,7 +21,7 @@ it should reach the deploy on its own.
 
 ## The incident
 
-`checkout-service` p99 latency sits near 180ms all afternoon, then jumps to
+`checkout-service` p99 latency sits near 180ms, then jumps to
 ~3.4 seconds at **14:20** and stays there. Error rate goes 0.1% → 4.2%.
 
 The board is deliberately noisy:
@@ -54,7 +60,7 @@ durable incident state.
 | Tool | What it does | What you see |
 | --- | --- | --- |
 | `get_service_health()` | Status, p50, p99, error rate and firing alerts for all five services. The entry point. | Flashes the service rail, selects the worst service |
-| `query_metrics({service, metric, window})` | Baseline, peak, `peak_at`, `anomaly_start`, `change_factor` and ≤15 downsampled points. | Repaints the chart to that service/metric/window |
+| `query_metrics({service, metric, window})` | Baseline, peak, current value, anomaly/recovery onset, direction, factors, time-to-SLO and ≤15 samples. | Repaints the chart to that service/metric/window |
 | `filter_traces({service, window, min_latency_ms?, limit?})` | Aggregate span breakdown across every match, plus the slowest exemplars. | Filters the trace table, opens the slowest trace |
 | `search_logs({service, window, query?, level?, limit?})` | Log lines grouped into patterns with counts and first/last seen. | Filters the log pane |
 | `correlate_with_deploys({window, service?})` | Every candidate deploy scored 0–1 on proximity to the anomaly, with its diff note. | Drops deploy markers on the chart |
@@ -67,10 +73,24 @@ durable incident state.
 under the chart to 14:15–14:30, click a trace, then ask your agent "what am I
 looking at?" — it picks up your investigation instead of restarting it.
 
+## Why WebMCP rather than browser automation
+
+The interface remains the source of truth for both participants. WebMCP gives
+the agent typed, bounded operations over the same state a human manipulates,
+without scraping pixels, guessing selectors, or hiding work in a parallel chat.
+
+- Read tools select and annotate the visible investigation surface.
+- Write tools create visible, attributed incident artifacts.
+- `get_current_view` preserves human context across the handoff.
+- `propose_rollback` can request a consequential action but cannot approve it.
+- Tool errors return structured recovery guidance instead of disappearing into
+  a rejected promise.
+
 ## Four properties worth checking in the source
 
-**Nothing is mocked.** Every number a tool returns is computed from the fixture
-series by real code in [`src/lib/analysis.ts`](src/lib/analysis.ts) — median
+**No tool answer is hard-coded.** Every number a tool returns is computed from
+a deterministic synthetic fixture by real code in
+[`src/lib/analysis.ts`](src/lib/analysis.ts) — median
 baselines, a change-point detector, span aggregation, log pattern grouping,
 deploy proximity scoring. If `query_metrics` says p99 peaked at 3498.6ms at
 14:49, that is `Math.max` over the series. The fixture itself
@@ -86,6 +106,8 @@ takes an `Actor`, which is how the interface can tell you who did what.
 The only function that applies a rollback is `store.approveRollback`, and its
 only caller is the `onClick` of the Approve button in
 [`RollbackCard.tsx`](src/components/RollbackCard.tsx). No tool reaches it.
+Requested windows are bounded by the current simulated time, so recovery data
+is unavailable until that approval advances the incident clock.
 
 **Errors teach the caller how to retry.** Not `"No results"` but
 `"No traces for checkout-service at or above 3000ms in 13:30-14:00. The slowest
@@ -121,6 +143,8 @@ npm run dev      # http://localhost:5173
 ```
 
 No backend, no API keys, no `.env`. `npm run build` produces a static `dist/`.
+Investigation state is saved in `sessionStorage`, so a refresh preserves the
+handoff; **reset replay** starts the deterministic scenario over.
 
 To see tools registered, open in Chrome 149+ with
 `chrome://flags/#enable-webmcp-testing` enabled, or in a WebMCP-capable host such
@@ -174,32 +198,49 @@ investigation, the error paths and the post-rollback state through the tool
 layer and prints every request and response. It is a dev-only page and is not
 part of the production build.
 
-## Layout
+### Automated verification
 
+```bash
+npm test
+npm run typecheck
+npm run build
 ```
-┌───────────────────────────────────────────────────────────────────────┐
-│ INC-4417  ·  window  ·  view handoff  ·  webmcp status                │
-├──────────┬──────────────────────────────────┬─────────────────────────┤
-│ services │ latency chart + deploy markers   │ incident timeline       │
-│          ├──────────────────────────────────┤ (pinned findings)       │
-│          │ traces + span breakdown          ├─────────────────────────┤
-│          ├──────────────────────────────────┤ rollback approval       │
-│          │ log stream                       ├─────────────────────────┤
-│          │                                  │ postmortem              │
-├──────────┴──────────────────────────────────┴─────────────────────────┤
-│ activity: agent / you, most recent first                              │
-└───────────────────────────────────────────────────────────────────────┘
-```
+
+The regression suite covers the telemetry approval boundary, recovery
+classification, malformed and oversized inputs, cancellation, synchronized
+reports, and preserved decision timestamps.
+
+## Interface and accessibility
 
 Every pane carries a provenance stamp in its header naming who last changed it
 and how — `agent · filter_traces · 14:47:20`, or `you · window 14:00-14:30`.
 When a tool mutates a pane, that pane gets one sharp flash in the colour of
-whoever caused it. That is the only motion in the application.
+whoever caused it. That is the only motion in the application, and it respects
+`prefers-reduced-motion`.
+
+The workspace reflows below desktop width instead of clipping. Chart windows
+can be changed with keyboard-accessible time inputs as well as drag handles,
+tool activity and approval requests use live regions, controls receive visible
+focus, and the muted palette meets normal-text contrast targets.
+
+![Sightline tablet layout](docs/sightline-tablet.jpg)
+
+## Scope and limitations
+
+- The bundled incident is synthetic and deterministic; no live observability
+  backend is connected.
+- The current submission demonstrates one deep incident rather than a catalog
+  of shallow scenarios. The analysis/tool boundary is intentionally separated
+  so a production adapter can replace the fixture.
+- State persists for the current browser tab only and is cleared by **reset
+  replay** or when the tab session ends.
+- WebMCP availability depends on the host. The application remains fully usable
+  by a human when no host is present.
 
 ## Stack
 
-Vite · React · TypeScript · Tailwind · Recharts · Zustand. No backend, no
-component library, no database.
+Vite · React · TypeScript · Tailwind · Recharts · Zustand · Vitest. No backend,
+component library, or database.
 
 ## License
 
