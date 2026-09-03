@@ -206,11 +206,20 @@ function defineTool(spec: ToolSpec): ToolDefinition {
           label: spec.name,
           detail: spec.summarize(args),
           ok: !result.isError,
+          request: JSON.stringify(args, null, 2),
+          response: result.content.map((part) => part.text).join('\n'),
         });
         return result;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        state().logActivity({ actor: 'agent', label: spec.name, detail: message, ok: false });
+        state().logActivity({
+          actor: 'agent',
+          label: spec.name,
+          detail: message,
+          ok: false,
+          request: JSON.stringify(args, null, 2),
+          response: message,
+        });
         return fail(message);
       }
     },
@@ -321,7 +330,8 @@ const queryMetrics = defineTool({
     s.setMetric(metric, 'agent');
     s.setWindow(w, 'agent');
 
-    const stats = metricStats(service, metric, w, METRIC_UNITS[metric]);
+    const health = serviceHealth(nowIso(s), resolvedAlertIds(s)).find((h) => h.service === service);
+    const stats = metricStats(service, metric, w, METRIC_UNITS[metric], health?.alert_names ?? []);
     const next = stats.recovery_start
       ? 'Recovery is confirmed in the data. Pin it with pin_finding so the incident record shows the mitigation worked, then call draft_incident_report again to fold it in.'
       : stats.anomaly_start
@@ -678,8 +688,9 @@ const proposeRollback = defineTool({
     'the on-call engineer clicks Approve. Call it rather than describing it — recommending a rollback in your reply ' +
     'puts nothing on their screen, and you do not need permission to ask, because the card is the asking. Call it as ' +
     'soon as you have a credible candidate rather than waiting until you are certain: the human is the check, not you. ' +
-    'Include the evidence that implicates the deploy and what you expect the rollback to fix, then use ' +
-    'get_current_view to read the decision.',
+    'Include the evidence that implicates the deploy and what you expect the rollback to fix. The engineer decides on ' +
+    'their own timescale, so do not wait or poll for it: say the proposal is on their screen and stop. If they tell ' +
+    'you they have decided, one get_current_view reads the outcome.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -739,7 +750,8 @@ const proposeRollback = defineTool({
     });
 
     return ok(
-      `Rollback of ${deployId} (${deploy.service} ${deploy.version}) is on screen awaiting human approval. Nothing has changed yet.`,
+      `Rollback of ${deployId} (${deploy.service} ${deploy.version}) is on screen awaiting human approval. Nothing has changed yet. ` +
+        'Your turn is done: tell them it is waiting and stop. Calling get_current_view repeatedly will not make the decision arrive.',
       {
         status: pending.status,
         deploy_id: deployId,

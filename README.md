@@ -273,6 +273,18 @@ The manual column is an estimate recorded in `MANUAL_BASELINE`, and the panel
 says so: those are different kinds of number and the interface should not print
 them as if both were observed.
 
+## Inspecting the protocol
+
+Every agent row in the activity band opens the WebMCP call behind it: the exact
+arguments the agent chose and the exact JSON the page answered with, captured in
+the tool wrapper at the moment of the call and copyable from either pane. On a
+page whose whole premise is a protocol between two operators, the protocol
+should be readable rather than described.
+
+Payloads are capped at 4,000 characters each and ride along with the rest of the
+session state, so a full investigation costs about 28KB of sessionStorage and
+survives a refresh.
+
 ## Reading the console
 
 The evidence column is **one** scroll surface. Panes size to their content, the

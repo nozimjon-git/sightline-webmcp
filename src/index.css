@@ -1720,6 +1720,183 @@ button:disabled {
   font-size: 11px !important;
 }
 
+/* Protocol traffic, the way a network tab shows a request */
+.activity-detail.is-inspectable {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.activity-detail.is-inspectable > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-detail.is-inspectable svg {
+  flex: 0 0 auto;
+  color: var(--color-line-strong);
+}
+
+.activity-detail.is-inspectable:hover {
+  color: var(--color-ink);
+}
+
+.activity-detail.is-inspectable:hover svg {
+  color: var(--color-agent);
+}
+
+.activity-list li.is-inspected .activity-detail.is-inspectable svg {
+  color: var(--color-agent);
+}
+
+.payload-inspector {
+  position: fixed;
+  z-index: 70;
+  right: 0;
+  bottom: 100px;
+  left: 0;
+  display: flex;
+  max-height: min(58vh, 520px);
+  flex-direction: column;
+  border-top: 1px solid var(--color-agent-deep);
+  background: var(--color-pane);
+  box-shadow: 0 -18px 44px rgb(0 0 0 / .5);
+}
+
+.payload-inspector-head {
+  display: flex;
+  min-height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--color-line);
+  padding: 0 14px;
+}
+
+.payload-inspector-head h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.payload-status {
+  border: 1px solid var(--color-agent-deep);
+  padding: 1px 6px;
+  color: var(--color-agent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.payload-status.is-error {
+  border-color: var(--color-alert-deep);
+  color: var(--color-alert);
+}
+
+.payload-inspector-head time {
+  margin-left: auto;
+  color: var(--color-ink-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.payload-inspector-head > button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--color-line);
+  background: transparent;
+  color: var(--color-ink-dim);
+}
+
+.payload-inspector-head > button:hover {
+  border-color: var(--color-line-strong);
+  color: var(--color-ink);
+}
+
+.payload-inspector-body {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
+  gap: 1px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  background: var(--color-line);
+}
+
+.payload-block {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex-direction: column;
+  background: var(--color-pane);
+}
+
+.payload-block header {
+  display: flex;
+  min-height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+  border-bottom: 1px solid var(--color-line);
+  padding: 0 12px;
+}
+
+.payload-block h4 {
+  margin: 0;
+  color: var(--color-ink-dim);
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.payload-size {
+  margin-right: auto;
+  color: var(--color-ink-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.payload-block header button {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--color-line);
+  background: transparent;
+  padding: 0 8px;
+  color: var(--color-ink-dim);
+  font-size: 11px;
+}
+
+.payload-block header button:hover {
+  border-color: var(--color-agent-deep);
+  color: var(--color-agent);
+}
+
+.payload-block pre {
+  min-height: 0;
+  flex: 1 1 auto;
+  margin: 0;
+  overflow: auto;
+  padding: 10px 12px;
+  color: var(--color-ink-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* Manual vs agent-assisted */
 .impact-table {
   width: 100%;
@@ -2482,6 +2659,8 @@ button:disabled {
 
 @media (max-width: 760px) {
   .handoff-status { display: none; }
+  .payload-inspector { bottom: 0; max-height: 76vh; }
+  .payload-inspector-body { grid-template-columns: minmax(0, 1fr); }
   .decision-rail { top: 100px; width: min(420px, 100vw); }
   .mobile-decision-trigger { right: 12px; bottom: 12px; }
 

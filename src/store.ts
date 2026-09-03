@@ -86,7 +86,19 @@ export interface ActivityEntry {
   detail: string;
   at: number;
   ok: boolean;
+  /**
+   * The actual WebMCP payloads for an agent entry, so the protocol traffic can
+   * be read rather than described. Capped, because get_current_view and
+   * draft_incident_report answer with several KB and this survives a refresh.
+   */
+  request?: string;
+  response?: string;
 }
+
+/** Payloads are an inspection aid, not the incident record. */
+export const PAYLOAD_CAP = 4000;
+const capped = (text: string): string =>
+  text.length <= PAYLOAD_CAP ? text : `${text.slice(0, PAYLOAD_CAP)}\n… ${text.length - PAYLOAD_CAP} more characters`;
 
 /** Who last changed a pane, and how. Rendered in every pane header. */
 export interface Provenance {
@@ -251,7 +263,18 @@ export const useStore = create<AppState>((set, get) => ({
     })),
 
   logActivity: (entry) =>
-    set((s) => ({ activity: [{ ...entry, id: ++activitySeq, at: Date.now() }, ...s.activity].slice(0, 60) })),
+    set((s) => ({
+      activity: [
+        {
+          ...entry,
+          request: entry.request ? capped(entry.request) : undefined,
+          response: entry.response ? capped(entry.response) : undefined,
+          id: ++activitySeq,
+          at: Date.now(),
+        },
+        ...s.activity,
+      ].slice(0, 60),
+    })),
 
   setService: (service, by) => {
     // Only drop the open trace when the service actually changes: a tool that

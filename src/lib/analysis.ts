@@ -171,7 +171,19 @@ function downsample(points: MetricPoint[], max: number): { t: string; v: number 
     .map((i) => ({ t: clock(points[i].t), v: points[i].v }));
 }
 
-export function metricStats(service: ServiceId, metric: MetricName, w: TimeWindow, unit: string): MetricStats {
+/**
+ * @param activeAlerts Names of alerts currently firing on this service. The
+ *   change-point detector and an alert threshold answer different questions,
+ *   and when they disagree the caller needs to be told rather than left with
+ *   two tools contradicting each other.
+ */
+export function metricStats(
+  service: ServiceId,
+  metric: MetricName,
+  w: TimeWindow,
+  unit: string,
+  activeAlerts: string[] = [],
+): MetricStats {
   const points = pointsIn(service, metric, w);
   const anomalyStart = detectAnomalyStart(points);
   const recoveryStart = detectRecoveryStart(points);
@@ -217,6 +229,20 @@ export function metricStats(service: ServiceId, metric: MetricName, w: TimeWindo
     stats.note = `Window is only ${windowMinutes(w)} minutes, too short to establish a baseline. Widen it to see whether ${baseline}${unit} is normal for ${service}.`;
   } else if (!anomalyStart && !recoveryStart) {
     stats.note = `No change point found: ${metric} stayed within 3x of its ${baseline}${unit} baseline across this window.`;
+    if (activeAlerts.length > 0) {
+      // A service can be alerting and still have no step change: the detector
+      // looks for a sudden shift, an alert threshold looks at a level. Saying
+      // only "no change point" here leaves get_service_health and this tool
+      // flatly contradicting each other.
+      const callers = SERVICES.filter((svc) => svc.dependsOn.includes(service)).map((svc) => svc.id);
+      stats.note +=
+        ` But ${service} has ${activeAlerts.length} active alert (${activeAlerts.join(', ')}) and is running ` +
+        `${stats.change_factor}x that baseline, so this is drift rather than a step change — the detector and the ` +
+        `alert threshold are answering different questions.` +
+        (callers.length
+          ? ` ${callers.join(' and ')} call${callers.length === 1 ? 's' : ''} this service; compare the same window there before deciding which one is the cause.`
+          : '');
+    }
   } else if (recoveryStart) {
     stats.note = `${metric} recovered at ${clock(recoveryStart)}; current ${current}${unit} is ${recoveryFactor}x below the pre-recovery median.`;
   }

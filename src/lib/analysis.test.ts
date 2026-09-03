@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEPLOYS, isoAtMinute, LIVE_MINUTES, METRIC_UNITS, TOTAL_MINUTES } from '../data/incident';
-import { correlateDeploys, metricStats, rollbackChecks } from './analysis';
+import { correlateDeploys, metricStats, rollbackChecks, serviceHealth } from './analysis';
 import { parseWindow } from './time';
 
 describe('metric recovery analysis', () => {
@@ -50,5 +50,39 @@ describe('rollback pre-flight checks', () => {
       at: isoAtMinute(1),
     });
     expect(userService.find((c) => c.label === 'Later deploys')?.clear).toBe(false);
+  });
+});
+
+describe('a degraded service the change-point detector does not fire on', () => {
+  const now = isoAtMinute(LIVE_MINUTES);
+  const window = parseWindow('full_incident', now);
+  const health = serviceHealth(now, []);
+
+  it('says why the detector and the alert threshold disagree', () => {
+    const gateway = health.find((h) => h.service === 'payment-gateway')!;
+    expect(gateway.status).toBe('degraded');
+
+    const stats = metricStats('payment-gateway', 'p99', window, 'ms', gateway.alert_names);
+    expect(stats.anomaly_start).toBeNull();
+    expect(stats.note).toContain('active alert');
+    expect(stats.note).toContain('drift rather than a step change');
+    // And it points at the service that calls this one.
+    expect(stats.note).toContain('checkout-service');
+  });
+
+  /**
+   * inventory-service runs at 2.84x its baseline with no alert firing — it is
+   * the fixture's red herring. Lowering the detector to 2x to "catch degraded
+   * services" would make it report a change point and strengthen the false
+   * lead, so the threshold stays where it is and only the note changes.
+   */
+  it('stays quiet about a service that is merely noisy', () => {
+    const inventory = health.find((h) => h.service === 'inventory-service')!;
+    expect(inventory.active_alerts).toBe(0);
+
+    const stats = metricStats('inventory-service', 'p99', window, 'ms', inventory.alert_names);
+    expect(stats.change_factor).toBeGreaterThan(2);
+    expect(stats.anomaly_start).toBeNull();
+    expect(stats.note).not.toContain('active alert');
   });
 });

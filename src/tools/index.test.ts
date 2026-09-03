@@ -51,6 +51,9 @@ describe('WebMCP tool contracts', () => {
     expect(describe_('pin_finding')).toMatch(/not at this conversation/i);
     expect(describe_('propose_rollback')).toMatch(/rather than describing it/i);
 
+    // And why the turn ends there rather than in a wait loop.
+    expect(describe_('propose_rollback')).toMatch(/do not wait or poll/i);
+
     // A ceiling, generously set, to catch genuine runaway growth.
     const total = [...TOOL_BY_NAME.values()].reduce((n, t) => n + t.description.length, 0);
     expect(total).toBeLessThan(9000);

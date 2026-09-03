@@ -7,3 +7,12 @@ dist
 
 # Build brief, kept locally and out of the public history.
 SPEC.md
+
+# Review and QA artifacts: generated locally, reference absolute paths on the
+# machine that made them, and go stale the moment the interface changes.
+design-qa.md
+docs/audit/
+docs/qa/
+docs/*-final.png
+docs/*-redesign.png
+.idea/

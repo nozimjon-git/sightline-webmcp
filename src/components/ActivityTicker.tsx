@@ -1,7 +1,8 @@
-import { ArrowRight, Robot, User } from '@phosphor-icons/react';
+import { ArrowRight, Code, Robot, User } from '@phosphor-icons/react';
 import { useState, type FormEvent } from 'react';
 import { clock } from '../data/incident';
 import { nowIso, useStore } from '../store';
+import { PayloadInspector } from './PayloadInspector';
 
 /**
  * What to do when there is no host.
@@ -16,6 +17,7 @@ const stampOf = (entry: { at: number }) =>
 
 export function ActivityTicker() {
   const [note, setNote] = useState('');
+  const [inspectedId, setInspectedId] = useState<number | null>(null);
   const activity = useStore((state) => state.activity);
   const mcp = useStore((state) => state.mcp);
   const addFinding = useStore((state) => state.addFinding);
@@ -24,6 +26,7 @@ export function ActivityTicker() {
     // Four fits the band exactly. A fifth row half-cut behind a scrollbar reads
   // as a bug, and the full trail is the postmortem's job, not the ticker's.
   const rows = activity.slice(0, 4);
+  const inspected = activity.find((entry) => entry.id === inspectedId) ?? null;
 
   const addNote = (event: FormEvent) => {
     event.preventDefault();
@@ -40,7 +43,9 @@ export function ActivityTicker() {
   };
 
   return (
-    <footer className="activity-panel" aria-label="Shared incident activity">
+    <>
+      {inspected && <PayloadInspector entry={inspected} onClose={() => setInspectedId(null)} />}
+      <footer className="activity-panel" aria-label="Shared incident activity">
       <div className="activity-heading">
         <h2>Activity</h2>
         <span className={`activity-live ${mcp.state === 'connected' ? 'is-connected' : ''}`}>
@@ -62,7 +67,7 @@ export function ActivityTicker() {
           </li>
         ) : (
           rows.map((entry, index) => (
-            <li key={entry.id}>
+            <li key={entry.id} className={inspected?.id === entry.id ? 'is-inspected' : ''}>
               {/* A burst of tool calls lands in the same second. Printing the
                   same stamp five times down the column buries the tool names
                   the reader is actually scanning, so a repeat goes quiet. */}
@@ -78,7 +83,19 @@ export function ActivityTicker() {
                 {entry.actor === 'agent' ? 'Agent' : 'You'}
               </span>
               <span className={entry.ok ? '' : 'text-alert'}>{entry.label}</span>
-              <span className="activity-detail">{entry.detail}</span>
+              {entry.request ? (
+                <button
+                  type="button"
+                  className="activity-detail is-inspectable"
+                  onClick={() => setInspectedId(entry.id)}
+                  title="Show the arguments and result for this call"
+                >
+                  <span>{entry.detail}</span>
+                  <Code size={13} aria-hidden />
+                </button>
+              ) : (
+                <span className="activity-detail">{entry.detail}</span>
+              )}
             </li>
           ))
         )}
@@ -96,6 +113,7 @@ export function ActivityTicker() {
           <ArrowRight size={16} weight="bold" />
         </button>
       </form>
-    </footer>
+      </footer>
+    </>
   );
 }
