@@ -39,6 +39,10 @@ export interface Finding {
   /** Clock time this finding is about, e.g. "14:20". */
   timestamp: string;
   severity: Severity;
+  /** Optional agent-calibrated confidence, from 0 to 1. */
+  confidence?: number;
+  /** Tool names that produced the evidence, used as visible jump links. */
+  sourceRefs?: string[];
   pinnedBy: Actor;
   pinnedAt: string;
 }
@@ -197,7 +201,10 @@ const initialData = () => ({
   report: null as IncidentReport | null,
 });
 
-type PersistedState = ReturnType<typeof initialData>;
+type PersistedState = ReturnType<typeof initialData> & {
+  activity: ActivityEntry[];
+  provenance: Partial<Record<PaneId, Provenance>>;
+};
 
 function readPersistedState(): Partial<PersistedState> {
   if (typeof window === 'undefined') return {};
@@ -205,7 +212,7 @@ function readPersistedState(): Partial<PersistedState> {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as { version?: number; state?: Partial<PersistedState> };
-    return parsed.version === 1 && parsed.state ? parsed.state : {};
+    return (parsed.version === 1 || parsed.version === 2) && parsed.state ? parsed.state : {};
   } catch {
     return {};
   }
@@ -216,6 +223,7 @@ findingSeq = Math.max(
   0,
   ...(persistedState.findings ?? []).map((finding) => Number(finding.id.replace(/^f-/, '')) || 0),
 );
+activitySeq = Math.max(0, ...(persistedState.activity ?? []).map((entry) => entry.id || 0));
 
 function rebuildReportIfPresent(s: AppState): IncidentReport | null {
   if (!s.report) return null;
@@ -231,9 +239,9 @@ export const useStore = create<AppState>((set, get) => ({
   ...initialData(),
   ...persistedState,
 
-  activity: [],
+  activity: persistedState.activity ?? [],
   pulses: { ...emptyPulses },
-  provenance: {},
+  provenance: persistedState.provenance ?? {},
   mcp: { state: 'checking', api: '', toolCount: 0 },
 
   touch: (pane, by, label) =>
@@ -423,9 +431,11 @@ if (typeof window !== 'undefined') {
       pendingRollback: s.pendingRollback,
       appliedRollback: s.appliedRollback,
       report: s.report,
+      activity: s.activity,
+      provenance: s.provenance,
     };
     try {
-      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, state }));
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, state }));
     } catch {
       // Storage can be unavailable in hardened/private contexts; the app still works in-memory.
     }

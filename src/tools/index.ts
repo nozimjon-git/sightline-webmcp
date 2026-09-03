@@ -540,6 +540,13 @@ const correlateWithDeploys = defineTool({
 // ---------------------------------------------------------------------------
 
 const SEVERITIES = ['info', 'warning', 'critical'] as const;
+const FINDING_SOURCES = [
+  'get_service_health',
+  'query_metrics',
+  'filter_traces',
+  'search_logs',
+  'correlate_with_deploys',
+] as const;
 
 const pinFinding = defineTool({
   name: 'pin_finding',
@@ -580,6 +587,19 @@ const pinFinding = defineTool({
           '"info" for context, "warning" for a contributing factor or a ruled-out lead worth recording, "critical" ' +
           'for the causal finding.',
       },
+      confidence: {
+        type: 'number',
+        minimum: 0,
+        maximum: 1,
+        description: 'Optional calibrated confidence from 0 to 1. Use 1 only when the evidence is conclusive.',
+      },
+      source_refs: {
+        type: 'array',
+        maxItems: 5,
+        uniqueItems: true,
+        items: { type: 'string', enum: FINDING_SOURCES },
+        description: 'Tools whose results support this finding. These become jump links in the human timeline.',
+      },
     },
     required: ['title', 'evidence', 'timestamp', 'severity'],
     additionalProperties: false,
@@ -599,9 +619,22 @@ const pinFinding = defineTool({
     })!;
     const timestamp = readClock(a.timestamp, 'timestamp');
     const severity = readEnum<Severity>(a.severity, SEVERITIES, 'severity');
+    const confidence = a.confidence === undefined ? undefined : Number(a.confidence);
+    if (confidence !== undefined && (!Number.isFinite(confidence) || confidence < 0 || confidence > 1)) {
+      throw new ToolError('"confidence" must be a number from 0 to 1.');
+    }
+    if (a.source_refs !== undefined && !Array.isArray(a.source_refs)) {
+      throw new ToolError('"source_refs" must be an array of supporting tool names.');
+    }
+    const sourceRefs = [...new Set((a.source_refs as unknown[] | undefined ?? []).map((value) => String(value)))];
+    const invalidSource = sourceRefs.find((value) => !(FINDING_SOURCES as readonly string[]).includes(value));
+    if (invalidSource) {
+      throw new ToolError(`"${invalidSource}" is not a valid source ref. Use: ${FINDING_SOURCES.join(', ')}.`);
+    }
+    if (sourceRefs.length > 5) throw new ToolError('"source_refs" accepts at most 5 tool names.');
 
     const s = state();
-    const finding = s.addFinding({ title, evidence, timestamp, severity, pinnedBy: 'agent' });
+    const finding = s.addFinding({ title, evidence, timestamp, severity, confidence, sourceRefs, pinnedBy: 'agent' });
     const all = state().findings;
     return ok(`Pinned "${title}" at ${timestamp} [${severity}]. ${all.length} finding(s) on the timeline.`, {
       pinned: true,
@@ -795,6 +828,8 @@ const getCurrentView = defineTool({
         evidence: f.evidence,
         timestamp: f.timestamp,
         severity: f.severity,
+        confidence: f.confidence ?? null,
+        source_refs: f.sourceRefs ?? [],
         pinned_by: f.pinnedBy,
       })),
       rollback: s.pendingRollback

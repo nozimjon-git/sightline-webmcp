@@ -125,7 +125,13 @@ export function buildReport(findings: Finding[], ctx: ReportContext): IncidentRe
   // --- Findings ------------------------------------------------------------
   sections.push({
     heading: `Findings (${findings.length} pinned)`,
-    body: findings.map((f) => `[${f.severity}] ${f.timestamp} — ${f.title}\n    Evidence: ${f.evidence}\n    Pinned by: ${attribution(f)}`),
+    body: findings.map((f) =>
+      `[${f.severity}] ${f.timestamp} — ${f.title}` +
+      `${f.confidence !== undefined ? ` (${Math.round(f.confidence * 100)}% confidence)` : ''}` +
+      `\n    Evidence: ${f.evidence}` +
+      `${f.sourceRefs?.length ? `\n    Sources: ${f.sourceRefs.join(', ')}` : ''}` +
+      `\n    Pinned by: ${attribution(f)}`,
+    ),
   });
 
   // --- Root cause ----------------------------------------------------------

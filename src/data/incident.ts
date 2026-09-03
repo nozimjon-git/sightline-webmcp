@@ -622,6 +622,22 @@ export const ROLLBACK_LOGS: LogLine[] = [
   },
 ];
 
+/**
+ * Baseline for the manual path through this same incident.
+ *
+ * These are estimates, not measurements, and the UI labels them as such. They
+ * describe what working this scenario by hand costs: open the dashboard, scan
+ * five services, page through three deploys, correlate traces to a config
+ * change, then write the postmortem. The agent-side figures shown beside them
+ * are measured live from the activity trail, so the comparison is honest about
+ * which half is observed and which half is assumed.
+ */
+export const MANUAL_BASELINE = {
+  minutesToRootCause: 25,
+  minutesToMitigation: 40,
+  consoleQueries: 18,
+} as const;
+
 export const INCIDENT = {
   id: 'INC-4417',
   title: 'Checkout latency spike',

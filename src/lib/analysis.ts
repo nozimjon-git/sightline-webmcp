@@ -491,10 +491,20 @@ export function correlateDeploys(
   let anomalyIso: string | null = null;
   let anomalyMetric: MetricName | null = null;
 
+  // A bounded window often starts exactly where the anomaly starts. Change-point
+  // detection needs a baseline before that first visible sample, so correlation
+  // gets a small analysis-only pre-roll while the shared UI keeps the window the
+  // agent asked for. This prevents a perfectly valid `14:20-15:00` request from
+  // losing the 14:20 change point just because it sits on the left boundary.
+  const analysisWindow: TimeWindow = {
+    ...w,
+    startIso: new Date(Date.parse(w.startIso) - 15 * 60_000).toISOString(),
+  };
+
   if (service) {
     anomalyService = service;
     for (const metric of ['p99', 'error_rate'] as MetricName[]) {
-      const start = detectAnomalyStart(pointsIn(service, metric, w));
+      const start = detectAnomalyStart(pointsIn(service, metric, analysisWindow));
       if (start) {
         anomalyIso = start;
         anomalyMetric = metric;
@@ -502,7 +512,7 @@ export function correlateDeploys(
       }
     }
   } else {
-    const worst = worstAnomaly(w);
+    const worst = worstAnomaly(analysisWindow);
     if (worst) {
       anomalyService = worst.service;
       anomalyIso = worst.startIso;
@@ -544,3 +554,83 @@ export function correlateDeploys(
 }
 
 export const deployById = (id: string): Deploy | undefined => DEPLOYS.find((d) => d.id === id);
+
+// ---------------------------------------------------------------------------
+// 6. Rollback pre-flight
+// ---------------------------------------------------------------------------
+
+export interface RollbackCheck {
+  label: string;
+  detail: string;
+  /** false marks something the human should read before approving. */
+  clear: boolean;
+}
+
+const MIGRATION_PATH = /(migration|schema|\.sql\b)/i;
+
+/**
+ * Pre-flight checks for a proposed rollback.
+ *
+ * Every line here is derived from the deploy fixture. An approval gate that
+ * displays reassuring constants is worse than one that displays nothing: it
+ * teaches the operator to trust a check that never ran. Where the data cannot
+ * answer a question, the check says so rather than passing.
+ */
+export function rollbackChecks(deploy: Deploy): RollbackCheck[] {
+  const laterDeploys = DEPLOYS.filter((d) => d.service === deploy.service && d.at > deploy.at);
+  const migrationFiles = deploy.diff
+    .filter((line) => line.startsWith('+++') || line.startsWith('---'))
+    .filter((line) => MIGRATION_PATH.test(line));
+
+  return [
+    {
+      label: 'Restore target',
+      detail: `${deploy.version} → ${deploy.previousVersion}`,
+      clear: Boolean(deploy.previousVersion),
+    },
+    {
+      label: 'Later deploys',
+      detail: laterDeploys.length
+        ? `${laterDeploys.length} newer deploy to ${deploy.service} would be reverted too`
+        : `None to ${deploy.service} since ${clock(deploy.at)}`,
+      clear: laterDeploys.length === 0,
+    },
+    {
+      label: 'Migrations',
+      detail: migrationFiles.length
+        ? `${migrationFiles.length} migration file in the diff`
+        : `Config only across ${deploy.changes.length} changes`,
+      clear: migrationFiles.length === 0,
+    },
+    {
+      label: 'Authority',
+      detail: 'Agent proposes, only you can apply',
+      clear: true,
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// 7. Investigation impact
+// ---------------------------------------------------------------------------
+
+export interface ImpactBreadth {
+  servicesScanned: number;
+  deploysConsidered: number;
+}
+
+/**
+ * How much ground one investigation had to cover.
+ *
+ * A manual investigator opens every service and reads every deploy in the
+ * window before ruling any of them out; `get_service_health` and
+ * `correlate_with_deploys` each collapse that sweep into one call. These are
+ * the denominators for "leads ruled out" — the numerator is however many the
+ * human ended up pinning.
+ */
+export function impactBreadth(w: TimeWindow): ImpactBreadth {
+  return {
+    servicesScanned: SERVICES.length,
+    deploysConsidered: DEPLOYS.filter((d) => inWindow(d.at, w)).length,
+  };
+}

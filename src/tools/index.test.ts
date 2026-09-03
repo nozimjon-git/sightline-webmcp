@@ -83,6 +83,23 @@ describe('WebMCP tool contracts', () => {
     expect(oversized.content[0].text).toContain('at most 120 characters');
   });
 
+  it('preserves confidence and source references on evidence-backed findings', async () => {
+    const result = await call('pin_finding', {
+      title: 'Connection acquisition dominates latency',
+      evidence: 'Trace aggregation attributes 96.2% of total time to db.connection.acquire.',
+      timestamp: '14:20',
+      severity: 'critical',
+      confidence: 0.97,
+      source_refs: ['filter_traces', 'search_logs'],
+    });
+
+    expect(result.isError).not.toBe(true);
+    expect(useStore.getState().findings[0]).toMatchObject({
+      confidence: 0.97,
+      sourceRefs: ['filter_traces', 'search_logs'],
+    });
+  });
+
   it('honors cancellation before a tool starts', async () => {
     const controller = new AbortController();
     controller.abort();
