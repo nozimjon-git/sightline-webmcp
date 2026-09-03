@@ -124,8 +124,38 @@ No backend, no API keys, no `.env`. `npm run build` produces a static `dist/`.
 
 To see tools registered, open in Chrome 149+ with
 `chrome://flags/#enable-webmcp-testing` enabled, or in a WebMCP-capable host such
-as ChatGPT. The header badge reports which API surface was found and how many
-tools registered.
+as ChatGPT Desktop. The header badge reports which API surface was found and how
+many tools registered.
+
+### Verifying registration against Chrome's implementation
+
+You can check the whole surface without an agent. Launch Chrome with the WebMCP
+runtime feature on:
+
+```bash
+'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+  --enable-blink-features=WebMCP https://sightline-webmcp.netlify.app/
+```
+
+Then, in devtools:
+
+```js
+const tools = await document.modelContext.getTools();
+tools.length                                  // 9
+tools.map(t => t.name)
+
+const qm = tools.find(t => t.name === 'query_metrics');
+// Chrome's executeTool takes the arguments as a JSON *string*, not an object.
+await document.modelContext.executeTool(qm, JSON.stringify({
+  service: 'checkout-service', metric: 'p99', window: 'full_incident',
+}));
+```
+
+Two things that are easy to miss and worth seeing for yourself: a tool error
+comes back as `{ "isError": true, "content": [...] }` with the retry hint
+intact rather than as a rejected promise, and `propose_rollback` returns
+`awaiting_human_approval` while the page state stays untouched until someone
+clicks Approve.
 
 ### Driving the tools without an agent
 
