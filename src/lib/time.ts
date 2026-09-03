@@ -44,17 +44,33 @@ export const WINDOW_SYNTAX_HELP =
 const DATA_START = T0_ISO;
 const DATA_END = isoAtMinute(TOTAL_MINUTES);
 
-const clampIso = (iso: string): string => {
+const clampIso = (iso: string, maxIso: string): string => {
   if (iso < DATA_START) return DATA_START;
-  if (iso > DATA_END) return DATA_END;
+  if (iso > maxIso) return maxIso;
   return iso;
 };
 
 export const labelFor = (startIso: string, endIso: string): string => `${clock(startIso)}-${clock(endIso)}`;
 
-const makeWindow = (startIso: string, endIso: string): TimeWindow => {
-  const s = clampIso(startIso);
-  const e = clampIso(endIso);
+const makeWindow = (startIso: string, endIso: string, nowIso: string): TimeWindow => {
+  const maxIso = nowIso < DATA_END ? nowIso : DATA_END;
+  if (startIso > maxIso) {
+    throw new TimeWindowError(
+      `The requested window starts at ${clock(startIso)}, after the latest available telemetry at ${clock(maxIso)} UTC.`,
+    );
+  }
+  if (endIso < DATA_START) {
+    throw new TimeWindowError(
+      `The requested window ends before the incident telemetry begins at ${clock(DATA_START)} UTC.`,
+    );
+  }
+  const s = clampIso(startIso, maxIso);
+  const e = clampIso(endIso, maxIso);
+  if (e <= s) {
+    throw new TimeWindowError(
+      `The requested window has no available telemetry. Use a range between ${clock(DATA_START)} and ${clock(maxIso)} UTC.`,
+    );
+  }
   return { startIso: s, endIso: e, label: labelFor(s, e) };
 };
 
@@ -68,12 +84,12 @@ export function parseWindow(raw: string | undefined, nowIso: string): TimeWindow
   const input = (raw ?? 'full_incident').trim().toLowerCase().replace(/\s+/g, '');
 
   if (input === 'full_incident' || input === 'all' || input === 'incident') {
-    return makeWindow(DATA_START, nowIso);
+    return makeWindow(DATA_START, nowIso, nowIso);
   }
 
   if (input in PRESET_MINUTES) {
     const minutes = PRESET_MINUTES[input as keyof typeof PRESET_MINUTES];
-    return makeWindow(new Date(Date.parse(nowIso) - minutes * 60_000).toISOString(), nowIso);
+    return makeWindow(new Date(Date.parse(nowIso) - minutes * 60_000).toISOString(), nowIso, nowIso);
   }
 
   // Bare "last_Nm" that is not one of the presets — accept it rather than fail.
@@ -81,7 +97,7 @@ export function parseWindow(raw: string | undefined, nowIso: string): TimeWindow
   if (relative) {
     const minutes = Number(relative[1]);
     if (minutes > 0) {
-      return makeWindow(new Date(Date.parse(nowIso) - minutes * 60_000).toISOString(), nowIso);
+      return makeWindow(new Date(Date.parse(nowIso) - minutes * 60_000).toISOString(), nowIso, nowIso);
     }
   }
 
@@ -89,6 +105,9 @@ export function parseWindow(raw: string | undefined, nowIso: string): TimeWindow
   const clockRange = /^(\d{1,2}):(\d{2})(?::\d{2})?[-–to]{1,2}(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(input);
   if (clockRange) {
     const [, h1, m1, h2, m2] = clockRange;
+    if ([h1, h2].some((h) => Number(h) > 23) || [m1, m2].some((m) => Number(m) > 59)) {
+      throw new TimeWindowError(`Could not read "${raw}" as a clock range. Hours must be 00-23 and minutes 00-59.`);
+    }
     const start = `${INCIDENT_DATE}T${h1.padStart(2, '0')}:${m1}:00.000Z`;
     const end = `${INCIDENT_DATE}T${h2.padStart(2, '0')}:${m2}:00.000Z`;
     if (Number.isNaN(Date.parse(start)) || Number.isNaN(Date.parse(end))) {
@@ -99,7 +118,7 @@ export function parseWindow(raw: string | undefined, nowIso: string): TimeWindow
         `Window "${raw}" ends at or before it starts. Put the earlier time first, e.g. "14:00-14:30".`,
       );
     }
-    return makeWindow(new Date(start).toISOString(), new Date(end).toISOString());
+    return makeWindow(new Date(start).toISOString(), new Date(end).toISOString(), nowIso);
   }
 
   // ISO range: <iso>/<iso> or <iso>..<iso>
@@ -111,7 +130,7 @@ export function parseWindow(raw: string | undefined, nowIso: string): TimeWindow
       if (end <= start) {
         throw new TimeWindowError(`Window "${raw}" ends at or before it starts. Put the earlier timestamp first.`);
       }
-      return makeWindow(new Date(start).toISOString(), new Date(end).toISOString());
+      return makeWindow(new Date(start).toISOString(), new Date(end).toISOString(), nowIso);
     }
   }
 

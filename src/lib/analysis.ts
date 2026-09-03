@@ -110,7 +110,11 @@ export interface MetricStats {
   peak_at: string;
   current: number;
   anomaly_start: string | null;
+  recovery_start: string | null;
+  change_direction: 'increase' | 'decrease' | 'flat';
   change_factor: number;
+  recovery_factor: number | null;
+  time_to_slo_minutes: number | null;
   sample_points: { t: string; v: number }[];
   note?: string;
 }
@@ -137,26 +141,56 @@ export function detectAnomalyStart(points: MetricPoint[]): string | null {
   return null;
 }
 
+/**
+ * Recovery detection mirrors the upward detector: the first sample where the
+ * next five-point median is at most one third of the preceding ten-point
+ * median. This lets a post-mitigation window prove recovery even when it starts
+ * after the original anomaly onset.
+ */
+export function detectRecoveryStart(points: MetricPoint[]): string | null {
+  const MIN_LOOKBACK = 4;
+  for (let i = MIN_LOOKBACK; i < points.length - 2; i++) {
+    const before = median(points.slice(Math.max(0, i - 10), i).map((p) => p.v));
+    const after = median(points.slice(i, i + 5).map((p) => p.v));
+    if (before > 0 && after <= before / 3 && points[i].v <= before / 2) return points[i].t;
+  }
+  return null;
+}
+
 /** At most `max` points, always keeping the first, the last and the peak. */
 function downsample(points: MetricPoint[], max: number): { t: string; v: number }[] {
   if (points.length <= max) return points.map((p) => ({ t: clock(p.t), v: p.v }));
   const peakIdx = points.reduce((best, p, i) => (p.v > points[best].v ? i : best), 0);
   const keep = new Set<number>([0, points.length - 1, peakIdx]);
   const stride = (points.length - 1) / (max - 1);
-  for (let k = 0; k < max; k++) keep.add(Math.round(k * stride));
+  for (let k = 0; k < max && keep.size < max; k++) keep.add(Math.round(k * stride));
+  for (let i = 0; i < points.length && keep.size < max; i++) keep.add(i);
   return [...keep]
     .filter((i) => i >= 0 && i < points.length)
     .sort((a, b) => a - b)
-    .slice(0, max)
     .map((i) => ({ t: clock(points[i].t), v: points[i].v }));
 }
 
 export function metricStats(service: ServiceId, metric: MetricName, w: TimeWindow, unit: string): MetricStats {
   const points = pointsIn(service, metric, w);
   const anomalyStart = detectAnomalyStart(points);
+  const recoveryStart = detectRecoveryStart(points);
   const beforeAnomaly = anomalyStart ? points.filter((p) => p.t < anomalyStart) : points;
-  const baseline = round(median((beforeAnomaly.length >= 3 ? beforeAnomaly : points).map((p) => p.v)));
+  const beforeRecovery = recoveryStart ? points.filter((p) => p.t < recoveryStart) : [];
+  const baselinePoints = anomalyStart
+    ? beforeAnomaly
+    : recoveryStart && beforeRecovery.length >= 3
+      ? beforeRecovery
+      : points;
+  const baseline = round(median((baselinePoints.length >= 3 ? baselinePoints : points).map((p) => p.v)));
   const peakPoint = points.reduce((best, p) => (p.v > best.v ? p : best), points[0]);
+  const current = points[points.length - 1].v;
+  const recoveryFactor = recoveryStart && current > 0 ? round(baseline / current) : null;
+  const recoveryIndex = recoveryStart ? points.findIndex((p) => p.t === recoveryStart) : -1;
+  const sloIndex =
+    recoveryIndex >= 0 && metric === 'p99'
+      ? points.findIndex((p, i) => i >= recoveryIndex && p.v <= 1000)
+      : -1;
 
   const stats: MetricStats = {
     service,
@@ -166,16 +200,25 @@ export function metricStats(service: ServiceId, metric: MetricName, w: TimeWindo
     baseline,
     peak: peakPoint.v,
     peak_at: clock(peakPoint.t),
-    current: points[points.length - 1].v,
+    current,
     anomaly_start: anomalyStart ? clock(anomalyStart) : null,
+    recovery_start: recoveryStart ? clock(recoveryStart) : null,
+    change_direction: anomalyStart ? 'increase' : recoveryStart ? 'decrease' : 'flat',
     change_factor: baseline > 0 ? round(peakPoint.v / baseline) : 0,
+    recovery_factor: recoveryFactor,
+    time_to_slo_minutes:
+      recoveryIndex >= 0 && sloIndex >= recoveryIndex
+        ? Math.round((Date.parse(points[sloIndex].t) - Date.parse(points[recoveryIndex].t)) / 60_000)
+        : null,
     sample_points: downsample(points, 15),
   };
 
-  if (!anomalyStart && beforeAnomaly.length < 3) {
+  if (!anomalyStart && !recoveryStart && beforeAnomaly.length < 3) {
     stats.note = `Window is only ${windowMinutes(w)} minutes, too short to establish a baseline. Widen it to see whether ${baseline}${unit} is normal for ${service}.`;
-  } else if (!anomalyStart) {
+  } else if (!anomalyStart && !recoveryStart) {
     stats.note = `No change point found: ${metric} stayed within 3x of its ${baseline}${unit} baseline across this window.`;
+  } else if (recoveryStart) {
+    stats.note = `${metric} recovered at ${clock(recoveryStart)}; current ${current}${unit} is ${recoveryFactor}x below the pre-recovery median.`;
   }
   return stats;
 }
