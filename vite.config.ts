@@ -15,5 +15,16 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: { headers: originIsolation },
   preview: { headers: originIsolation },
-  build: { target: 'es2022' },
+  build: {
+    target: 'es2022',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('recharts') || id.includes('/d3-') || id.includes('victory-vendor')) return 'charts';
+          return 'vendor';
+        },
+      },
+    },
+  },
 });
