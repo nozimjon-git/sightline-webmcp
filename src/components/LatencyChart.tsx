@@ -34,7 +34,7 @@ const PRESETS: { label: string; value: string }[] = [
   { label: 'all', value: 'full_incident' },
 ];
 
-const COLOR = { normal: '#97a2a6', alert: '#e2724e', agent: '#8fb3c4', line: '#2a3134', faint: '#6a7579' };
+const COLOR = { normal: '#4d585f', alert: '#c0392b', agent: '#1f6193', line: '#e6e9ec', faint: '#7d8890' };
 
 interface Row {
   t: string;
@@ -242,8 +242,8 @@ export function LatencyChart() {
               startIndex={startIndex}
               endIndex={endIndex}
               onChange={onBrush}
-              stroke={COLOR.line}
-              fill="#1b2023"
+              stroke={COLOR.faint}
+              fill="#f7f8f9"
               travellerWidth={7}
               tickFormatter={() => ''}
             />

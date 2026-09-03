@@ -10,7 +10,7 @@ export function ActivityTicker() {
   const mcp = useStore((s) => s.mcp);
 
   return (
-    <footer className="activity-ticker flex min-h-8 shrink-0 items-center gap-3 overflow-hidden border-t border-line bg-pane px-3" role="status" aria-live="polite" aria-atomic="false">
+    <footer className="activity-ticker flex min-h-8 shrink-0 items-center gap-3 overflow-hidden border-t border-line bg-ground px-3" role="status" aria-live="polite" aria-atomic="false">
       <span className="shrink-0 text-2xs text-ink-faint">activity</span>
       {activity.length === 0 ? (
         <span className="font-mono text-2xs text-ink-faint">

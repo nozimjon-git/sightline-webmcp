@@ -4,8 +4,7 @@ An incident war room a human and an AI agent investigate **together, on the same
 screen**, over [WebMCP](https://github.com/webmachinelearning/webmcp).
 
 **[Open the live demo](https://sightline-webmcp.netlify.app/)** ·
-**[Browse the source](https://github.com/nozimjon-git/sightline-webmcp)** ·
-**[Read the 3-minute demo script](docs/demo-script.md)**
+**[Browse the source](https://github.com/nozimjon-git/sightline-webmcp)**
 
 ![Sightline incident workspace](docs/sightline-overview.jpg)
 

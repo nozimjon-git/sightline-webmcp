@@ -54,7 +54,7 @@ export function Header() {
   const live = applied?.decision !== 'approved';
 
   return (
-    <header className="app-header flex min-h-14 shrink-0 items-center gap-4 border-b border-line bg-pane px-4 py-2.5">
+    <header className="app-header flex min-h-14 shrink-0 items-center gap-4 border-b border-line bg-ground px-4 py-2.5">
       <div className="flex min-w-0 items-center gap-2.5">
         <span
           className={`h-6 w-1 ${live ? 'bg-alert' : 'bg-agent'}`}

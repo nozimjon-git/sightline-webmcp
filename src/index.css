@@ -15,26 +15,46 @@
   alignment carry the seriousness instead of decoration.
 */
 @theme {
-  --color-ground: #171b1e;
-  --color-pane: #1b2023;
-  --color-raised: #212729;
-  --color-line: #2a3134;
-  --color-line-strong: #394347;
+  /*
+    A light, high-density operations console.
 
-  --color-ink: #d9dfe1;
-  --color-ink-dim: #a9b3b7;
-  --color-ink-faint: #89959a;
+    The obvious move for an incident tool is a dark slate ground with one warm
+    accent, and that is exactly why this is not that: it is the look every
+    generated dashboard arrives at, and on this brief it reads as a template
+    rather than a decision. Density done in the light is harder and rarer, and
+    it is what the tools engineers actually trust at work look like.
 
-  --color-alert: #e2724e;
-  --color-alert-deep: #7e3826;
-  --color-agent: #8fb3c4;
-  /* Diff notation only. Not a second accent: red and green are the language a
-     unified diff is written in, and rendering one in any other palette makes it
-     harder to read to prove a point about restraint. */
-  --color-add: #7fa88a;
-  --color-add-wash: #1d2622;
-  --color-alert-wash: #2a1d19;
-  --color-agent-deep: #33505c;
+    Panels are white and sit on a cool grey ground, so a pane is a surface with
+    an edge rather than a darker rectangle. Hairlines do the dividing. Colour is
+    reserved almost entirely for meaning: one signal red for genuine anomaly,
+    one deep blue for the agent, and the diff's own red and green where a diff
+    is being shown.
+  */
+  --color-ground: #eef0f2;
+  --color-pane: #ffffff;
+  --color-raised: #f2f4f6;
+  --color-line: #dfe3e7;
+  --color-line-strong: #bcc4cb;
+
+  --color-ink: #10151a;
+  --color-ink-dim: #4d585f;
+  --color-ink-faint: #7d8890;
+
+  /* Genuine anomaly state only. A deep signal red, not a decorative orange. */
+  --color-alert: #c0392b;
+  --color-alert-deep: #8c2419;
+  --color-on-alert: #ffffff;
+
+  /* Everything the agent touched. Never used for severity. */
+  --color-agent: #1f6193;
+  --color-agent-deep: #164a72;
+
+  /* Diff notation only. Red and green are the language a unified diff is
+     written in; rendering one in the app's single alert hue would make it
+     harder to read in order to prove a point about restraint. */
+  --color-add: #1a7f4b;
+  --color-add-wash: #e7f5ec;
+  --color-alert-wash: #fdeceb;
 
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
@@ -46,6 +66,7 @@
   --text-sm: 0.875rem;
   --text-sm--line-height: 1.3rem;
 }
+
 
 html,
 body,

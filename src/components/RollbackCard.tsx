@@ -79,7 +79,7 @@ export function RollbackCard() {
           <button
             type="button"
             onClick={approveRollback}
-            className="action-hit border border-alert bg-alert px-3 text-xs font-medium text-ground hover:bg-[#ec7f5c]"
+            className="action-hit border border-alert bg-alert px-3 text-xs font-medium text-on-alert hover:bg-alert-deep"
           >
             Approve rollback
           </button>
