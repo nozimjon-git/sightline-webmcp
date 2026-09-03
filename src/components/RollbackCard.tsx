@@ -91,8 +91,6 @@ export function RollbackCard() {
         </div>
       </div>
 
-      {deploy && <CausalChain deploy={deploy} />}
-
       {deploy && (
         <>
           <div className="version-change" aria-label="Version change">
@@ -106,6 +104,8 @@ export function RollbackCard() {
               <strong>{deploy.previousVersion}</strong>
             </div>
           </div>
+
+          <CausalChain deploy={deploy} />
 
           <div className="proposal-changes">
             <p>{deploy.id} shipped {clock(deploy.at)} by {deploy.author}</p>

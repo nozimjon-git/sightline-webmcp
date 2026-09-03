@@ -52,6 +52,9 @@ export default function App() {
 
   return (
     <div className="app-shell flex h-full min-w-0 flex-col">
+      <a className="skip-link" href="#investigation">
+        Skip to the evidence
+      </a>
       <Header />
       <main className="app-main flex min-h-0 flex-1">
         <ServiceRail />

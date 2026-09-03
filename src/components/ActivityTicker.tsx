@@ -37,6 +37,9 @@ function HostDiagnostic() {
   );
 }
 
+const stampOf = (entry: { at: number }) =>
+  new Date(entry.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
 export function ActivityTicker() {
   const [note, setNote] = useState('');
   const activity = useStore((state) => state.activity);
@@ -44,6 +47,10 @@ export function ActivityTicker() {
   const addFinding = useStore((state) => state.addFinding);
   const disconnected = mcp.state === 'unavailable' || mcp.state === 'error';
   const now = useStore(nowIso);
+
+  // Four fits the band exactly. A fifth row half-cut behind a scrollbar reads as
+// a bug, and the full trail is the postmortem's job, not the ticker's.
+  const rows = activity.slice(0, disconnected ? 2 : 4);
 
   const addNote = (event: FormEvent) => {
     event.preventDefault();
@@ -62,10 +69,7 @@ export function ActivityTicker() {
   return (
     <footer className="activity-panel" aria-label="Shared incident activity">
       <div className="activity-heading">
-        <div>
-          <h2>Activity</h2>
-          <span>WebMCP session with you</span>
-        </div>
+        <h2>Activity</h2>
         <span className={`activity-live ${mcp.state === 'connected' ? 'is-connected' : ''}`}>
           <i aria-hidden /> {mcp.state === 'connected' ? 'Agent connected' : 'No agent host'}
         </span>
@@ -87,14 +91,17 @@ export function ActivityTicker() {
             </span>
           </li>
         ) : (
-          activity.slice(0, disconnected ? 2 : 5).map((entry) => (
+          rows.map((entry, index) => (
             <li key={entry.id}>
+              {/* A burst of tool calls lands in the same second. Printing the
+                  same stamp five times down the column buries the tool names
+                  the reader is actually scanning, so a repeat goes quiet. */}
               <time
-                className="activity-time"
+                className={`activity-time ${index > 0 && stampOf(rows[index - 1]) === stampOf(entry) ? 'is-repeat' : ''}`}
                 dateTime={new Date(entry.at).toISOString()}
                 title={`Performed at ${new Date(entry.at).toLocaleString()}`}
               >
-                {new Date(entry.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                {stampOf(entry)}
               </time>
               <span className={`activity-actor ${entry.actor}`}>
                 {entry.actor === 'agent' ? <Robot size={14} weight="fill" /> : <User size={14} weight="fill" />}

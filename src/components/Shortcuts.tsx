@@ -14,7 +14,7 @@
  * built on.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SERVICE_IDS, type MetricName } from '../data/incident';
 import { matchTraces } from '../lib/analysis';
 import { parseWindow } from '../lib/time';
@@ -134,6 +134,17 @@ export function useShortcuts(): { helpOpen: boolean; closeHelp: () => void } {
 }
 
 export function ShortcutsOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  // Escape is already handled globally; this moves focus in so a keyboard user
+  // lands inside the dialog they just opened, and back out when it closes.
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    return () => opener?.focus();
+  }, [open]);
+
   if (!open) return null;
   return (
     <div
@@ -150,9 +161,10 @@ export function ShortcutsOverlay({ open, onClose }: { open: boolean; onClose: ()
         <header className="flex items-baseline justify-between border-b border-line px-4 py-2.5">
           <h2 className="text-xs font-medium text-ink">Keyboard</h2>
           <button
+            ref={closeRef}
             type="button"
             onClick={onClose}
-            className="font-mono text-2xs text-ink-faint hover:text-ink"
+            className="control-hit font-mono text-2xs text-ink-faint hover:text-ink"
           >
             esc
           </button>

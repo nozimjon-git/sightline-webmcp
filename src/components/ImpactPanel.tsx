@@ -21,6 +21,10 @@ export function ImpactPanel() {
   const breadth = impactBreadth(timeWindow);
 
   const agentCalls = activity.filter((entry) => entry.actor === 'agent' && entry.ok);
+  // A sweep only rules anything out once it has actually run. Before that the
+  // breadth figures describe the fixture, not the investigation.
+  const swept = agentCalls.some((entry) => entry.label === 'get_service_health');
+  const correlated = agentCalls.some((entry) => entry.label === 'correlate_with_deploys');
   const started = agentCalls.length ? Math.min(...agentCalls.map((entry) => entry.at)) : null;
   const rootCause = findings
     .filter((f) => f.severity === 'critical')
@@ -47,7 +51,15 @@ export function ImpactPanel() {
     {
       label: 'Leads ruled out',
       manual: 'one at a time',
-      agent: `${breadth.servicesScanned - 1} services · ${Math.max(0, breadth.deploysConsidered - 1)} deploys`,
+      agent:
+        swept || correlated
+          ? [
+              swept ? `${breadth.servicesScanned - 1} services` : null,
+              correlated ? `${Math.max(0, breadth.deploysConsidered - 1)} deploys` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          : '—',
     },
   ];
 

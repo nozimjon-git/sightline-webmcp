@@ -101,7 +101,8 @@ export function Header() {
           {live ? 'ACTIVE' : 'MITIGATED'}
         </span>
         <span className="declared-copy">
-          Declared {clock(incidentMeta.declaredAt)} by {incidentMeta.commander} · now {clock(now)} UTC
+          <span className="declared-now">{clock(now)} UTC</span>
+          <span className="declared-since">declared {clock(incidentMeta.declaredAt)}</span>
         </span>
       </div>
 

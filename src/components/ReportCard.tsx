@@ -1,5 +1,5 @@
 import { ArrowsOut, Article, Check, CheckCircle, Copy, DownloadSimple, ShareNetwork, X } from '@phosphor-icons/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore, type IncidentReport } from '../store';
 import { useTouchFlash } from './Pane';
 
@@ -23,6 +23,27 @@ export function ReportCard() {
   const [copied, setCopied] = useState(false);
   const markdown = useMemo(() => report ? reportMarkdown(report) : '', [report]);
   const summary = report?.sections.find((section) => section.heading === 'Summary') ?? report?.sections[0];
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  // A dialog that cannot be dismissed from the keyboard is not a dialog. Focus
+  // moves in on open, Escape closes it, and focus returns to whatever opened it.
+  useEffect(() => {
+    if (!expanded) return;
+    openerRef.current = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        setExpanded(false);
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('keydown', onKey, true);
+      openerRef.current?.focus();
+    };
+  }, [expanded]);
 
   if (!report) {
     return (
@@ -103,7 +124,7 @@ export function ReportCard() {
                 <span className="eyebrow">Generated from {report.findingCount} pinned findings</span>
                 <h2 id="report-modal-title">{report.incidentId} postmortem</h2>
               </div>
-              <button type="button" onClick={() => setExpanded(false)} aria-label="Close postmortem"><X size={19} /></button>
+              <button ref={closeRef} type="button" onClick={() => setExpanded(false)} aria-label="Close postmortem"><X size={19} /></button>
             </header>
             <div className="report-modal-actions">
               <button type="button" onClick={copyReport}>{copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Copied' : 'Copy Markdown'}</button>

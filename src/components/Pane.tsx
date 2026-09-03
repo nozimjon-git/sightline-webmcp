@@ -10,9 +10,9 @@ import { useStore, type Actor, type PaneId } from '../store';
  */
 function Stamp({ pane, compact = false }: { pane: PaneId; compact?: boolean }) {
   const prov = useStore((s) => s.provenance[pane]);
-  if (!prov) {
-    return <span className="shrink-0 font-mono text-2xs whitespace-nowrap text-ink-faint">untouched</span>;
-  }
+  // Nothing to attribute yet. Four panes each announcing "untouched" is chrome,
+  // not signal — the stamp earns its place only once it has a name to print.
+  if (!prov) return null;
   const who = prov.actor === 'agent' ? 'agent' : 'you';
   const time = new Date(prov.at).toLocaleTimeString('en-GB', { hour12: false });
   const tone = prov.actor === 'agent' ? 'text-agent' : 'text-ink-dim';

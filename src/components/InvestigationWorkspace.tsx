@@ -6,11 +6,13 @@ import {
   RocketLaunch,
   Robot,
   TerminalWindow,
+  X,
 } from '@phosphor-icons/react';
 import { useState, type ReactNode } from 'react';
 import { DEPLOYS, INCIDENT_DATE, clock } from '../data/incident';
 import { detectAnomalyStart, matchLogs, matchTraces, pointsIn } from '../lib/analysis';
-import { extraLogs, useStore } from '../store';
+import { parseWindow } from '../lib/time';
+import { extraLogs, nowIso, useStore } from '../store';
 import { IncidentTimeline } from './IncidentTimeline';
 import { LatencyChart } from './LatencyChart';
 import { LogStream } from './LogStream';
@@ -81,7 +83,6 @@ function DeploymentEvent() {
 
 export function InvestigationWorkspace() {
   const [view, setView] = useState<EvidenceView>('timeline');
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const service = useStore((state) => state.selectedService);
   const metric = useStore((state) => state.metric);
   const timeWindow = useStore((state) => state.window);
@@ -89,6 +90,9 @@ export function InvestigationWorkspace() {
   const logQuery = useStore((state) => state.logQuery);
   const logLevel = useStore((state) => state.logLevel);
   const extra = useStore(extraLogs);
+  const setTraceFilter = useStore((state) => state.setTraceFilter);
+  const setWindow = useStore((state) => state.setWindow);
+  const setLogFilter = useStore((state) => state.setLogFilter);
   const findings = useStore((state) => state.findings);
   const applied = useStore((state) => state.appliedRollback);
 
@@ -107,19 +111,54 @@ export function InvestigationWorkspace() {
   const newestLog = logs.at(-1);
   const appliedDeploy = applied ? DEPLOYS.find((item) => item.id === applied.deployId) : undefined;
 
+  const fullWindow = parseWindow('full_incident', nowIso(useStore.getState()));
+  const activeScope = [
+    minLatency > 0
+      ? {
+          label: 'traces',
+          value: `>= ${minLatency.toLocaleString('en-US')}ms`,
+          clear: () => setTraceFilter({ minLatencyMs: 0 }, 'human'),
+        }
+      : null,
+    timeWindow.label !== fullWindow.label
+      ? {
+          label: 'window',
+          value: `${timeWindow.label} UTC`,
+          clear: () => setWindow(fullWindow, 'human'),
+        }
+      : null,
+    logQuery
+      ? { label: 'logs', value: `"${logQuery}"`, clear: () => setLogFilter({ query: '' }, 'human') }
+      : null,
+  ].filter((chip): chip is { label: string; value: string; clear: () => void } => chip !== null);
+
   return (
     <section id="investigation" className="investigation-workspace" aria-label="Incident investigation evidence">
       <div className="workspace-toolbar">
-        <div className="toolbar-group">
-          <button
-            type="button"
-            className={`toolbar-button ${filtersOpen ? 'is-active' : ''}`}
-            onClick={() => setFiltersOpen((open) => !open)}
-            aria-expanded={filtersOpen}
-          >
-            <Funnel size={16} />
-            Scope
-          </button>
+        {/* A filter the agent set is a filter the human has to be able to
+            undo. Chips appear only for scope that is off its default, and each
+            one clears itself — a read-only summary of the same facts would
+            just be the pane headers again. */}
+        <div className="toolbar-group scope-chips" aria-label="Active scope">
+          {activeScope.length === 0 ? (
+            <span className="scope-empty">
+              <Funnel size={15} aria-hidden /> Full incident, all traces
+            </span>
+          ) : (
+            activeScope.map((chip) => (
+              <button
+                key={chip.label}
+                type="button"
+                className="scope-chip"
+                onClick={chip.clear}
+                aria-label={`Clear ${chip.label} filter`}
+              >
+                <span>{chip.label}</span>
+                <strong>{chip.value}</strong>
+                <X size={12} weight="bold" aria-hidden />
+              </button>
+            ))
+          )}
         </div>
         <div className="toolbar-group toolbar-view" role="group" aria-label="Evidence view">
           <span>View</span>
@@ -141,21 +180,6 @@ export function InvestigationWorkspace() {
           </button>
         </div>
       </div>
-
-      {filtersOpen && (
-        <div className="active-filter-bar" role="status">
-          <Funnel size={14} />
-          <span>Service:</span>
-          <strong>{service}</strong>
-          <span className="filter-separator">·</span>
-          <span>Window:</span>
-          <strong>{timeWindow.label} UTC</strong>
-          <span className="filter-separator">·</span>
-          <span>Traces:</span>
-          <strong>{minLatency > 0 ? `>= ${minLatency}ms` : 'all'}</strong>
-          <button type="button" onClick={() => setFiltersOpen(false)}>Close</button>
-        </div>
-      )}
 
       <div className="workspace-scroll">
         <div className="timeline-range">

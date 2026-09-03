@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise, Check, Copy, Robot, User } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Check, Copy, Robot, Trash, User } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { useStore, type Severity } from '../store';
 import { Pane } from './Pane';
@@ -52,8 +52,7 @@ export function IncidentTimeline() {
     <Pane
       id="timeline"
       title={sorted.length ? 'Agent findings' : 'Agent investigation'}
-      className={`decision-timeline min-h-0 border-b border-line ${sorted.length ? 'min-h-[9rem] flex-1' : 'shrink-0'}`}
-      bodyClassName="overflow-y-auto"
+      className="decision-timeline shrink-0 border-b border-line"
       controls={
         findings.length > 0 ? (
           <span className="shrink-0 font-mono text-2xs tnum whitespace-nowrap text-ink-faint">
@@ -91,13 +90,17 @@ export function IncidentTimeline() {
                   <div className="flex items-baseline gap-2">
                     <span className="font-mono text-2xs tnum text-ink-faint">{f.timestamp}</span>
                     <span className="min-w-0 flex-1 text-xs leading-snug text-ink">{f.title}</span>
+                    {/* The one destructive control in the findings list, so it
+                        reads as a control rather than as a word, and it stays
+                        reachable by keyboard whether or not the row is hovered. */}
                     <button
                       type="button"
                       onClick={() => removeFinding(f.id)}
                       aria-label={`Remove finding: ${f.title}`}
-                      className="control-hit shrink-0 px-1 text-2xs text-ink-faint opacity-40 group-hover:opacity-100 focus:opacity-100 hover:text-alert"
+                      title="Remove this finding"
+                      className="finding-remove"
                     >
-                      remove
+                      <Trash size={14} />
                     </button>
                   </div>
                   <p className="mt-1 text-2xs leading-relaxed text-ink-dim">{f.evidence}</p>

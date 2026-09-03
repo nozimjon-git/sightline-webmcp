@@ -269,6 +269,20 @@ The manual column is an estimate recorded in `MANUAL_BASELINE`, and the panel
 says so: those are different kinds of number and the interface should not print
 them as if both were observed.
 
+## Reading the console
+
+The evidence column is **one** scroll surface. Panes size to their content, the
+trace table shows six rows and offers the rest, and only the log stream keeps an
+inner scroller — because a stream is what it is. Nothing is cut mid-sentence at
+a fold, and there is never a question of which surface the wheel is on.
+
+A pane's provenance stamp appears only once it has something to attribute. Four
+panes each announcing "untouched" on a fresh load is chrome, not signal.
+
+Scope the agent narrowed is scope the human can widen: whatever is off its
+default — a trace threshold, a bounded window, a log query — shows as a chip in
+the toolbar that clears itself on click.
+
 ## Accessibility
 
 No operational text renders below 11px, and `--color-ink-faint` clears 4.5:1 on

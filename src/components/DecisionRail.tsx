@@ -43,10 +43,13 @@ export function DecisionRail() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pending = useStore((state) => state.pendingRollback);
   const applied = useStore((state) => state.appliedRollback);
-  const decisionLabel = pending ? 'Decision required' : applied ? 'Decision recorded' : 'Mitigation';
+  const decisionLabel = pending ? 'Decision required' : applied ? 'Decision recorded' : 'No decision pending';
 
+  // A proposal opens the drawer; recording the decision closes it again. It
+  // should never sit over the console after the thing it was asking about is
+  // settled.
   useEffect(() => {
-    if (pending) setDrawerOpen(true);
+    setDrawerOpen(Boolean(pending));
   }, [pending]);
 
   return (
@@ -64,16 +67,18 @@ export function DecisionRail() {
       </button>
       {drawerOpen && <button type="button" className="decision-drawer-scrim" aria-label="Close decision panel" onClick={() => setDrawerOpen(false)} />}
       <aside id="decision-rail" className={`decision-rail ${drawerOpen ? 'is-mobile-open' : ''}`} aria-label="Incident decision and report">
-        <div className="decision-rail-title">
-          <span>{decisionLabel}</span>
+        <div className={`decision-rail-title ${pending ? 'is-urgent' : ''}`}>
+          <span>Decision</span>
           <span className="decision-safety"><ShieldCheck size={15} /> Human controlled</span>
           <button type="button" className="decision-drawer-close" onClick={() => setDrawerOpen(false)} aria-label="Close decision panel"><X size={17} /></button>
         </div>
         <div className="decision-rail-scroll">
           <RollbackCard />
-          <IncidentSummary />
-          <ImpactPanel />
-          <ReportCard />
+          <div className="rail-context" aria-label="Incident context">
+            <IncidentSummary />
+            <ImpactPanel />
+            <ReportCard />
+          </div>
         </div>
         <ApprovalFooter />
       </aside>

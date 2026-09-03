@@ -1,7 +1,17 @@
+import { CaretDown } from '@phosphor-icons/react';
+import { useEffect, useState } from 'react';
 import { analyzeTraces, matchTraces } from '../lib/analysis';
 import { TRACES, clock } from '../data/incident';
 import { useStore } from '../store';
 import { Empty, Pane } from './Pane';
+
+/**
+ * Rows shown before the table asks. A pane that scrolls inside a column that
+ * also scrolls is a trap: the reader cannot tell which surface their wheel is
+ * on, and rows get cut mid-sentence at the fold. So the table shows a
+ * readable slice and offers the rest explicitly.
+ */
+const COLLAPSED_ROWS = 6;
 
 const COLOR_FOR = (name: string, dominant: string | null) =>
   name === dominant ? 'bg-alert' : 'bg-line-strong';
@@ -10,14 +20,25 @@ export function TraceTable() {
   const service = useStore((s) => s.selectedService);
   const window = useStore((s) => s.window);
   const minLatency = useStore((s) => s.traceMinLatencyMs);
-  // The exemplar count the agent asked for. The table itself scrolls through
-  // every match; this only sizes the exemplar list inside the analysis.
+  // The exemplar count the agent asked for. This only sizes the exemplar list
+  // inside the analysis, not the rows on screen.
   const limit = useStore((s) => s.traceLimit);
   const selectedId = useStore((s) => s.selectedTraceId);
   const selectTrace = useStore((s) => s.selectTrace);
   const setTraceFilter = useStore((s) => s.setTraceFilter);
+  const [expanded, setExpanded] = useState(false);
 
   const matched = matchTraces(service, window, minLatency);
+  const visible = expanded ? matched : matched.slice(0, COLLAPSED_ROWS);
+  const hidden = matched.length - visible.length;
+
+  // j/k can walk past the fold. Open the table rather than scrolling a
+  // selection the reader cannot see.
+  useEffect(() => {
+    if (!selectedId || expanded) return;
+    const index = matched.findIndex((t) => t.id === selectedId);
+    if (index >= COLLAPSED_ROWS) setExpanded(true);
+  }, [selectedId, matched, expanded]);
   const analysis = matched.length ? analyzeTraces(service, window, minLatency, limit) : null;
   const selected = selectedId ? TRACES.find((t) => t.id === selectedId) : undefined;
 
@@ -25,12 +46,12 @@ export function TraceTable() {
     <Pane
       id="traces"
       title="Traces"
-      className="trace-pane h-[29%] min-h-[11rem] shrink-0 border-b border-line"
+      className="trace-pane shrink-0 border-b border-line"
       bodyClassName="trace-body flex min-h-0"
       controls={
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-1.5 text-2xs text-ink-faint">
-            min
+            slower than
             <input
               type="number"
               min={0}
@@ -54,7 +75,7 @@ export function TraceTable() {
         </Empty>
       ) : (
         <>
-          <div className="min-w-0 flex-1 overflow-auto">
+          <div className="min-w-0 flex-1">
             {/* The span column drops out below 1400px, so the floor is the width
                 of the three columns that always remain, not of all four. */}
             <table className="w-full min-w-[21rem] border-collapse">
@@ -67,7 +88,7 @@ export function TraceTable() {
                 </tr>
               </thead>
               <tbody>
-                {matched.map((t) => {
+                {visible.map((t) => {
                   const slowest = [...t.spans].sort((a, b) => b.durationMs - a.durationMs)[0];
                   const isSel = t.id === selectedId;
                   return (
@@ -101,9 +122,20 @@ export function TraceTable() {
                 })}
               </tbody>
             </table>
+            {hidden > 0 && (
+              <button type="button" className="trace-expand" onClick={() => setExpanded(true)}>
+                <CaretDown size={13} weight="bold" aria-hidden />
+                Show {hidden} more trace{hidden === 1 ? '' : 's'}
+              </button>
+            )}
+            {expanded && matched.length > COLLAPSED_ROWS && (
+              <button type="button" className="trace-expand" onClick={() => setExpanded(false)}>
+                Show fewer
+              </button>
+            )}
           </div>
 
-          <aside className="trace-detail w-72 shrink-0 overflow-y-auto border-l border-line px-3 py-2.5">
+          <aside className="trace-detail w-72 shrink-0 border-l border-line px-3 py-2.5">
             {selected ? (
               <>
                 <div className="mb-2 flex items-baseline justify-between gap-2">
