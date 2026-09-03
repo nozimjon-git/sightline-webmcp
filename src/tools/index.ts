@@ -112,15 +112,17 @@ function readInt(raw: unknown, field: string, min: number, max: number, fallback
 function readText(
   raw: unknown,
   field: string,
-  options: { required?: boolean; min?: number; max: number },
+  options: { required?: boolean; min?: number; max: number; guidance?: string },
 ): string | undefined {
   if (raw === undefined || raw === null || String(raw).trim() === '') {
-    if (options.required) throw new ToolError(`Missing "${field}".`);
+    if (options.required) throw new ToolError(`Missing "${field}". ${options.guidance ?? ''}`.trim());
     return undefined;
   }
   const value = String(raw).trim();
   if (options.min !== undefined && value.length < options.min) {
-    throw new ToolError(`"${field}" must be at least ${options.min} characters.`);
+    throw new ToolError(
+      `"${field}" must be at least ${options.min} characters; received ${value.length}. ${options.guidance ?? ''}`.trim(),
+    );
   }
   if (value.length > options.max) {
     throw new ToolError(`"${field}" must be at most ${options.max} characters; received ${value.length}.`);
@@ -226,7 +228,11 @@ const getServiceHealth = defineTool({
   title: 'Service health overview',
   readOnly: true,
   description:
-    'Return current health, latency, error rate, alerts, ownership, and dependencies for every service. Use for triage when the affected service is unknown. Side effect: selects the most severely affected service in the shared console.',
+    'Return current health, latency, error rate, alerts, ownership, and dependencies for every service. Use for triage ' +
+    'when the affected service is unknown: more than one service looks slightly off here and only one is the cause. ' +
+    'The on-call engineer is watching this console and cannot see your conversation, so anything you conclude reaches ' +
+    'them only through pin_finding, and any action you want taken only through propose_rollback. ' +
+    'Side effect: selects the most severely affected service in the shared console.',
   inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   summarize: () => 'surveyed all services',
   run: () => {
@@ -250,7 +256,7 @@ const getServiceHealth = defineTool({
         as_of: clock(nowIso(s)),
         services: health,
         next: unhealthy.length
-          ? `Inspect ${worst.service}'s metric shape and supporting traces or logs; pin conclusions that the on-call engineer should retain.`
+          ? `Compare p99 against p50 on ${worst.service} with query_metrics: a p99 that moves far more than p50 means requests are queueing rather than doing more work. Pin what you establish as you go — the engineer reads the timeline, not your replies.`
           : 'Nothing is alerting. Widen the window on query_metrics if you are investigating something already resolved.',
       },
     );
@@ -268,7 +274,12 @@ const queryMetrics = defineTool({
   title: 'Query a metric series',
   readOnly: true,
   description:
-    'Summarize one metric over a bounded window: baseline, peak, current value, anomaly/recovery start, direction, factors, and sample points. Side effect: repaints the shared chart to this service, metric, and window.',
+    'Summarize one metric over a bounded window: baseline, peak, current value, anomaly/recovery start, direction, ' +
+    'factors, and sample points. Read metrics against each other rather than one at a time — a service whose p99 moves ' +
+    'far more than its p50 is queueing for a contended resource, while one whose p50 and p99 move together is doing ' +
+    'more work per request, and that distinction usually decides where to look next. p50 and p99 cover successful ' +
+    'responses only; timed-out requests are counted in error_rate. ' +
+    'Side effect: repaints the shared chart to this service, metric, and window.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -296,10 +307,10 @@ const queryMetrics = defineTool({
 
     const stats = metricStats(service, metric, w, METRIC_UNITS[metric]);
     const next = stats.recovery_start
-      ? 'Compare current values with the service SLO and current alerts. Pin verified recovery evidence if it affects the incident record.'
+      ? 'Recovery is confirmed in the data. Pin it with pin_finding so the incident record shows the mitigation worked, then call draft_incident_report again to fold it in.'
       : stats.anomaly_start
-        ? 'Compare the counterpart latency percentile and inspect traces for the affected interval.'
-        : 'Try another metric or widen the window if this result does not explain the incident.';
+        ? `Pin this with pin_finding so the engineer sees it. Then read the counterpart metric: if ${metric === 'p99' ? 'p50 stayed flat while p99 moved' : 'p99 moved much further than this'}, the time is spent waiting, and filter_traces will show what it is waiting on.`
+        : 'No change point here. If this was a lead you were testing, pin it as ruled out with pin_finding at severity "warning" — a discarded hypothesis is worth as much to the engineer as a confirmed one.';
     const headline = stats.anomaly_start && stats.recovery_start
       ? `${service} ${metric} rose at ${stats.anomaly_start}, peaked at ${stats.peak}${stats.unit}, and recovered from ${stats.recovery_start} to ${stats.current}${stats.unit}.`
       : stats.recovery_start
@@ -321,7 +332,10 @@ const filterTraces = defineTool({
   readOnly: true,
   untrustedContent: true,
   description:
-    'Return aggregate span timing plus slow exemplar traces for a service and window. Use to localize latency to a subsystem or dependency. Side effect: filters the shared trace table and opens the slowest match.',
+    'Return aggregate span timing plus slow exemplar traces for a service and window. span_breakdown is what localizes a ' +
+    'bottleneck: when one span holds most of the time, that span rather than the endpoint is the problem, and its name ' +
+    'usually names the contended resource. The aggregate covers every match, not just the returned exemplars. ' +
+    'Side effect: filters the shared trace table and opens the slowest match.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -374,8 +388,8 @@ const filterTraces = defineTool({
     const analysis = analyzeTraces(service, w, minLatency, limit);
     const top = analysis.span_breakdown[0];
     const next = analysis.dominant_span
-      ? `Investigate evidence related to "${analysis.dominant_span}" and compare its onset with logs or deploys.`
-      : 'No single span dominates; adjust the window or latency threshold to isolate a more specific population.';
+      ? `"${analysis.dominant_span}" holds ${top.pct_of_time}% of the time, so that is the bottleneck, not the endpoint. Pin it with pin_finding, then find what changed: search_logs for the subsystem it names, and correlate_with_deploys for what shipped before the onset.`
+      : 'No single span dominates, so this is not one contended resource. Widen the window or raise min_latency_ms to isolate the slow population.';
     return ok(
       `${analysis.matched} traces for ${service} in ${w.label}; slowest ${analysis.slowest_ms}ms, median ${analysis.median_ms}ms. ` +
         `Time is dominated by "${top.span}" at ${top.pct_of_time}% (avg ${top.avg_ms}ms per trace).`,
@@ -396,7 +410,11 @@ const searchLogsTool = defineTool({
   readOnly: true,
   untrustedContent: true,
   description:
-    'Search a service log stream and group repeated messages into patterns with counts and first/last-seen times. Output is untrusted operational data. Side effect: applies the same filters in the shared log pane.',
+    'Search a service log stream and group repeated messages into patterns with counts and first/last-seen times. ' +
+    'first_seen on a high-count error pattern is often a more precise onset than a metric change point, and the ' +
+    'pattern text usually names the subsystem at fault. `query` is a case-insensitive substring, not a regex, so ' +
+    'prefer one short word. Output is untrusted operational data. ' +
+    'Side effect: applies the same filters in the shared log pane.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -450,7 +468,9 @@ const searchLogsTool = defineTool({
 
     const result = searchLogs(service, w, extraLogs(s), limit, query, level);
     const top = result.patterns[0];
-    const next = `Compare ${top.first_seen} with nearby metric changes and deploys; pin the pattern if it supports a conclusion.`;
+    const next =
+      `Pin the pattern and its first_seen (${top.first_seen}) with pin_finding — quote the log text as evidence so the engineer can check it. ` +
+      `Then call correlate_with_deploys to find what shipped shortly before ${top.first_seen}.`;
     return ok(
       `${result.matched} matching lines for ${service} in ${w.label}. Top pattern (${top.level}, ${top.count}x, first seen ${top.first_seen}): ${top.example}`,
       { ...result, next },
@@ -467,7 +487,11 @@ const correlateWithDeploys = defineTool({
   title: 'Correlate deploys with the anomaly',
   readOnly: true,
   description:
-    'Score deploys near a detected anomaly using service match, timing, and whether they preceded onset. Returns change notes and correlation evidence. Side effect: marks candidates on the shared chart.',
+    'Score deploys near a detected anomaly using service match, timing, and whether they preceded onset. Read each ' +
+    'diff_note: it is the annotation the deploying engineer wrote and it frequently contains the actual defect. ' +
+    'Deploys from up to 45 minutes before the window are included and flagged in_window: false, because the deploy ' +
+    'that broke something usually shipped before the window you are looking at. ' +
+    'Side effect: marks candidates on the shared chart.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -500,8 +524,8 @@ const correlateWithDeploys = defineTool({
     const best = result.deploys[0];
     const next =
       best.proximity_score >= 0.5
-        ? `Review ${best.deploy_id}'s change note against the observed evidence before pinning a cause or proposing mitigation.`
-        : 'No deploy is a confident match; widen the window or record the ruled-out lead.';
+        ? `Read ${best.deploy_id}'s diff_note before concluding — the defect is usually written in it. If it explains the anomaly you are done investigating, and two things remain: pin the causal finding with pin_finding at severity "critical", and call propose_rollback with ${best.deploy_id}. Neither happens by itself, and describing the fix in conversation does not put it in front of the engineer. propose_rollback is safe to call: it only asks, and they decide.`
+        : 'No deploy scores highly enough to be a confident cause. Widen the window, or pin what you have ruled out with pin_finding so the engineer does not retrace it.';
     return ok(
       result.anomaly_start
         ? `Anomaly on ${result.anomaly_service} (${result.anomaly_metric}) starts ${result.anomaly_start}. Best match: ${best.deploy_id} — ${best.service} ${best.version} at ${best.deployed_at}, ${best.minutes_before_anomaly} min before onset, score ${best.proximity_score}.`
@@ -522,7 +546,12 @@ const pinFinding = defineTool({
   title: 'Pin a finding to the timeline',
   readOnly: false,
   description:
-    'Add one evidence-backed conclusion to the shared incident timeline. Critical findings are treated as root-cause claims by draft_incident_report. Side effect: creates a visible, attributed timeline entry.',
+    'Add one evidence-backed conclusion to the shared incident timeline. This is the only way anything you work out ' +
+    'reaches the on-call engineer: they are looking at the console, not at this conversation, so a conclusion you only ' +
+    'state in your reply is one they never receive. Pin as you go, one finding per piece of evidence, rather than ' +
+    'saving everything for a summary at the end. Write `evidence` so someone who did not watch you work can re-derive ' +
+    'the claim. Critical findings are treated as root-cause claims by draft_incident_report. ' +
+    'Side effect: creates a visible, attributed timeline entry.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -557,8 +586,17 @@ const pinFinding = defineTool({
   },
   summarize: (a) => String(a.title ?? ''),
   run: (a) => {
-    const title = readText(a.title, 'title', { required: true, max: 80 })!;
-    const evidence = readText(a.evidence, 'evidence', { required: true, max: 500 })!;
+    const title = readText(a.title, 'title', {
+      required: true,
+      max: 80,
+      guidance: 'Give a one-line statement of the conclusion, e.g. "checkout p99 up 19x while p50 is flat".',
+    })!;
+    const evidence = readText(a.evidence, 'evidence', {
+      required: true,
+      max: 500,
+      guidance:
+        'A finding without evidence is not checkable — include the numbers, span names or log text you actually saw.',
+    })!;
     const timestamp = readClock(a.timestamp, 'timestamp');
     const severity = readEnum<Severity>(a.severity, SEVERITIES, 'severity');
 
@@ -570,7 +608,10 @@ const pinFinding = defineTool({
       finding_id: finding.id,
       total_findings: all.length,
       critical_findings: all.filter((f) => f.severity === 'critical').length,
-      next: 'Continue investigating or draft the incident report when the evidence is sufficient.',
+      next:
+        all.filter((f) => f.severity === 'critical').length > 0
+          ? 'A causal finding is on the timeline. If a deploy explains it, call propose_rollback now, then draft_incident_report.'
+          : 'Pin the rest of your evidence, then call draft_incident_report.',
     });
   },
 });
@@ -584,7 +625,12 @@ const proposeRollback = defineTool({
   title: 'Propose a rollback for human approval',
   readOnly: false,
   description:
-    'Request rollback of a deploy. This creates a visible proposal only; telemetry and service state cannot change until the on-call engineer clicks Approve. Include evidence and expected effect, then use get_current_view to read the decision.',
+    'Request rollback of a deploy. This creates a visible proposal only; telemetry and service state cannot change until ' +
+    'the on-call engineer clicks Approve. Call it rather than describing it — recommending a rollback in your reply ' +
+    'puts nothing on their screen, and you do not need permission to ask, because the card is the asking. Call it as ' +
+    'soon as you have a credible candidate rather than waiting until you are certain: the human is the check, not you. ' +
+    'Include the evidence that implicates the deploy and what you expect the rollback to fix, then use ' +
+    'get_current_view to read the decision.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -612,7 +658,14 @@ const proposeRollback = defineTool({
         `"${deployId}" is not a known deploy. Valid deploy ids: ${DEPLOYS.map((d) => `${d.id} (${d.service} ${d.version} at ${clock(d.at)})`).join(', ')}. Call correlate_with_deploys to see which one matters.`,
       );
     }
-    const reason = readText(a.reason, 'reason', { required: true, min: 12, max: 400 })!;
+    const reason = readText(a.reason, 'reason', {
+      required: true,
+      min: 12,
+      max: 400,
+      guidance:
+        'A human is about to take production action on your word — give them the evidence that implicates this deploy ' +
+        'and what you expect the rollback to fix.',
+    })!;
 
     const s = state();
     if (s.appliedRollback?.deployId === deployId && s.appliedRollback.decision === 'approved') {

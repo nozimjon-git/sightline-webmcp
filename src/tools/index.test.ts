@@ -11,12 +11,49 @@ const call = (name: string, args: Record<string, unknown> = {}, signal?: AbortSi
 describe('WebMCP tool contracts', () => {
   beforeEach(() => useStore.getState().resetIncident());
 
-  it('keeps the registered surface concise and contract-focused', () => {
-    const totalDescriptionCharacters = [...TOOL_BY_NAME.values()].reduce(
-      (total, tool) => total + tool.description.length,
-      0,
-    );
-    expect(totalDescriptionCharacters).toBeLessThan(3000);
+  it('describes every tool with a schema, a title and a read-only hint', () => {
+    for (const tool of TOOL_BY_NAME.values()) {
+      expect(tool.title.length, tool.name).toBeGreaterThan(0);
+      expect(tool.description.length, tool.name).toBeGreaterThan(0);
+      expect(tool.inputSchema.type, tool.name).toBe('object');
+      expect(typeof tool.annotations?.readOnlyHint, tool.name).toBe('boolean');
+    }
+  });
+
+  /**
+   * Descriptions cost the agent context on every turn, so they need a ceiling —
+   * but the ceiling is not the point. An earlier revision compressed every
+   * description to fit under 3000 characters total and, in doing so, deleted the
+   * guidance that had been added to fix an observed failure: from a single
+   * prompt the agent reached the correct root cause and then wrote it in chat,
+   * pinning nothing and proposing nothing, because nothing told it the engineer
+   * was not reading the chat. These assertions pin the behaviour-shaping
+   * sentences in place so that cannot silently regress again.
+   */
+  it('keeps the guidance that makes the agent act rather than narrate', () => {
+    const describe_ = (name: string) => TOOL_BY_NAME.get(name)!.description;
+
+    // The entry point has to establish where the human is actually looking.
+    expect(describe_('get_service_health')).toMatch(/cannot see your conversation/i);
+    expect(describe_('get_service_health')).toMatch(/pin_finding/);
+    expect(describe_('get_service_health')).toMatch(/propose_rollback/);
+
+    // The reasoning step the whole fixture is built around.
+    expect(describe_('query_metrics')).toMatch(/p99 moves far more than its p50/i);
+
+    // Naming the bottleneck, not the endpoint.
+    expect(describe_('filter_traces')).toMatch(/span_breakdown/);
+
+    // Where the defect is actually written down.
+    expect(describe_('correlate_with_deploys')).toMatch(/diff_note/);
+
+    // Why a reply is not a deliverable.
+    expect(describe_('pin_finding')).toMatch(/not at this conversation/i);
+    expect(describe_('propose_rollback')).toMatch(/rather than describing it/i);
+
+    // A ceiling, generously set, to catch genuine runaway growth.
+    const total = [...TOOL_BY_NAME.values()].reduce((n, t) => n + t.description.length, 0);
+    expect(total).toBeLessThan(9000);
   });
 
   it('keeps future recovery telemetry behind the human approval gate', async () => {
