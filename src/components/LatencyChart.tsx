@@ -122,7 +122,7 @@ export function LatencyChart() {
     <Pane
       id="chart"
       title={`${service} · ${METRIC_LABELS[metric]}`}
-      className="chart-pane h-[38%] shrink-0 border-b border-line"
+      className="chart-pane h-[42%] min-h-[15rem] shrink-0 border-b border-line"
       bodyClassName="flex flex-col"
       controls={
         <div className="flex items-center gap-3">
@@ -156,7 +156,9 @@ export function LatencyChart() {
             ))}
           </div>
           {anomalyClock && (
-            <span className="font-mono text-2xs text-alert tnum">change point {anomalyClock}</span>
+            <span className="chart-changepoint shrink-0 font-mono text-2xs whitespace-nowrap text-alert tnum">
+              change point {anomalyClock}
+            </span>
           )}
         </div>
       }
@@ -167,7 +169,7 @@ export function LatencyChart() {
         aria-label={`${service} ${METRIC_LABELS[metric]} from ${window.label} UTC. Current ${currentValue}${unit}; peak ${peakValue}${unit}${anomalyClock ? `; anomaly began ${anomalyClock}` : ''}.`}
       >
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} syncId="sightline">
+          <LineChart data={rows} margin={{ top: 6, right: 22, bottom: 0, left: 0 }} syncId="sightline">
             <CartesianGrid stroke={COLOR.line} strokeDasharray="0" vertical={false} />
             <XAxis
               dataKey="t"

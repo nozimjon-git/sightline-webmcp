@@ -17,12 +17,12 @@ export function IncidentTimeline() {
     <Pane
       id="timeline"
       title="Incident timeline"
-      className="decision-timeline min-h-0 flex-1 border-b border-line"
+      className={`decision-timeline min-h-0 border-b border-line ${sorted.length ? 'min-h-[9rem] flex-1' : 'shrink-0'}`}
       bodyClassName="overflow-y-auto"
       controls={
         findings.length > 0 ? (
           <span className="shrink-0 font-mono text-2xs tnum whitespace-nowrap text-ink-faint">
-            {findings.length} pinned · {findings.filter((f) => f.pinnedBy === 'agent').length} by agent
+            {findings.length} pinned
           </span>
         ) : undefined
       }

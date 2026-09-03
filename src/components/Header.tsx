@@ -13,13 +13,18 @@ function McpBadge() {
         ? 'looking for a host…'
         : 'no host — running human-only';
   return (
-    <div className="flex items-center gap-2" title={mcp.message ?? mcp.api} role="status" aria-live="polite">
+    <div
+      className="header-badge flex shrink-0 items-center gap-2"
+      title={mcp.message ?? mcp.api}
+      role="status"
+      aria-live="polite"
+    >
       <span className="text-2xs text-ink-faint">webmcp</span>
       <span
         className={`h-1.5 w-1.5 shrink-0 ${mcp.state === 'connected' ? 'bg-agent' : mcp.state === 'error' ? 'bg-alert' : 'bg-line-strong'}`}
         aria-hidden
       />
-      <span className={`font-mono text-2xs ${tone}`}>{label}</span>
+      <span className={`header-badge-label font-mono text-2xs whitespace-nowrap ${tone}`}>{label}</span>
     </div>
   );
 }
@@ -30,7 +35,7 @@ function HandoffChip() {
   const prov = useStore((s) => s.provenance.handoff);
   return (
     <div
-      className={`relative flex items-center gap-2 border border-line px-2 py-1 ${flash.className}`}
+      className={`relative flex shrink-0 items-center gap-2 whitespace-nowrap border border-line px-2 py-1 ${flash.className}`}
       title="The agent reads your current selection through get_current_view"
     >
       <span className="text-2xs text-ink-faint">view handoff</span>
@@ -68,7 +73,7 @@ export function Header() {
 
       <div className="min-w-3 flex-1" />
 
-      <div className="hidden items-baseline gap-2 md:flex">
+      <div className="header-window hidden items-baseline gap-2 whitespace-nowrap md:flex">
         <span className="text-2xs text-ink-faint">window</span>
         <span className="font-mono text-xs text-ink tnum">{selectedWindow.label}</span>
         <span className="text-2xs text-ink-faint">· now {clock(now)} UTC</span>
@@ -81,7 +86,7 @@ export function Header() {
         onClick={() => {
           if (globalThis.confirm('Reset the incident replay and clear this tab’s saved investigation?')) resetIncident();
         }}
-        className="control-hit shrink-0 border border-line px-2.5 font-mono text-2xs text-ink-dim hover:border-line-strong hover:text-ink"
+        className="header-reset control-hit shrink-0 border border-line px-2.5 font-mono text-2xs whitespace-nowrap text-ink-dim hover:border-line-strong hover:text-ink"
       >
         reset replay
       </button>

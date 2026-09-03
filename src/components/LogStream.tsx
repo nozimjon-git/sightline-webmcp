@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { matchLogs } from '../lib/analysis';
 import { clock, type LogLevel } from '../data/incident';
 import { extraLogs, useStore } from '../store';
@@ -26,15 +26,23 @@ export function LogStream() {
   const scroller = useRef<HTMLDivElement>(null);
 
   // Follow the tail whenever the filter changes, the way a log viewer should.
-  useEffect(() => {
-    scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
-  }, [pulse, lines.length]);
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    // Layout effect plus a frame: Recharts and the table above can still be
+    // settling when the effect first runs, which leaves scrollHeight stale.
+    el.scrollTop = el.scrollHeight;
+    const raf = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [pulse, lines.length, service, query, level]);
 
   return (
     <Pane
       id="logs"
       title="Logs"
-      className="logs-pane min-h-0 flex-1"
+      className="logs-pane min-h-[9rem] flex-1"
       bodyClassName="min-h-0"
       controls={
         <div className="flex min-w-0 items-center gap-2">

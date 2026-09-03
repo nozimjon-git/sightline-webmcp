@@ -59,7 +59,7 @@ export function ServiceRail() {
                   </span>
                 </div>
                 {h.active_alerts > 0 && (
-                  <div className="pl-4 font-mono text-2xs text-ink-faint">
+                  <div className="truncate pl-4 font-mono text-2xs text-ink-faint" title={h.alert_names.join(', ')}>
                     {h.active_alerts} alert{h.active_alerts > 1 ? 's' : ''} · {h.alert_names[0]}
                   </div>
                 )}

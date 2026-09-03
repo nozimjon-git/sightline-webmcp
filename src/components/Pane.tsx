@@ -82,7 +82,7 @@ export function Pane({ id, title, controls, children, className = '', bodyClassN
     <section className={`relative flex min-h-0 min-w-0 flex-col bg-pane ${className}`}>
       <header className="pane-header flex h-9 shrink-0 items-center gap-3 overflow-hidden border-b border-line px-3">
         <h2 className="shrink-0 truncate text-xs font-medium tracking-[0.03em] whitespace-nowrap text-ink">{title}</h2>
-        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">{controls}</div>
+        <div className="pane-controls flex min-w-0 flex-1 items-center gap-2 overflow-hidden">{controls}</div>
         <Stamp pane={id} compact={compactStamp} />
       </header>
       <div className={`min-h-0 flex-1 ${bodyClassName}`}>{children}</div>
@@ -93,8 +93,8 @@ export function Pane({ id, title, controls, children, className = '', bodyClassN
 
 export function Empty({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-full items-center justify-center px-6">
-      <p className="max-w-[34ch] text-center text-xs leading-relaxed text-ink-faint">{children}</p>
+    <div className="flex h-full justify-center px-6 pt-10">
+      <p className="max-w-[34ch] text-center text-xs leading-relaxed text-balance text-ink-faint">{children}</p>
     </div>
   );
 }

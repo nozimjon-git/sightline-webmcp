@@ -25,7 +25,7 @@ export function TraceTable() {
     <Pane
       id="traces"
       title="Traces"
-      className="trace-pane h-[30%] shrink-0 border-b border-line"
+      className="trace-pane h-[29%] min-h-[11rem] shrink-0 border-b border-line"
       bodyClassName="trace-body flex min-h-0"
       controls={
         <div className="flex items-center gap-2">
@@ -54,14 +54,16 @@ export function TraceTable() {
         </Empty>
       ) : (
         <>
-          <div className="min-w-0 flex-1 overflow-y-auto">
-            <table className="min-w-[34rem] w-full border-collapse">
+          <div className="min-w-0 flex-1 overflow-auto">
+            {/* The span column drops out below 1400px, so the floor is the width
+                of the three columns that always remain, not of all four. */}
+            <table className="w-full min-w-[21rem] border-collapse">
               <thead className="sticky top-0 bg-pane">
                 <tr className="border-b border-line text-left text-2xs text-ink-faint">
                   <th className="px-3 py-1 font-normal">trace</th>
                   <th className="px-2 py-1 font-normal">at</th>
                   <th className="px-2 py-1 text-right font-normal">duration</th>
-                  <th className="px-2 py-1 font-normal">slowest span</th>
+                  <th className="trace-col-span px-2 py-1 font-normal">slowest span</th>
                 </tr>
               </thead>
               <tbody>
@@ -92,7 +94,7 @@ export function TraceTable() {
                       >
                         {t.durationMs.toLocaleString('en-US')}ms
                       </td>
-                      <td className="truncate px-2 py-1 font-mono text-2xs text-ink-faint">{slowest.name}</td>
+                      <td className="trace-col-span truncate px-2 py-1 font-mono text-2xs text-ink-faint">{slowest.name}</td>
                     </tr>
                   );
                 })}

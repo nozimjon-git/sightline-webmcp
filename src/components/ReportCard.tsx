@@ -20,7 +20,7 @@ export function ReportCard() {
     <Pane
       id="report"
       title="Postmortem"
-      className="decision-report min-h-0 shrink-0 basis-[46%]"
+      className="decision-report min-h-[10rem] flex-1 basis-0"
       bodyClassName="overflow-y-auto"
       controls={
         <span className="shrink-0 font-mono text-2xs whitespace-nowrap text-ink-faint">
