@@ -296,6 +296,8 @@ export interface Deploy {
   id: string;
   service: ServiceId;
   version: string;
+  /** What the service ran before this deploy — the target of a rollback. */
+  previousVersion: string;
   at: string;
   author: string;
   /** Human-readable summary of what changed. */
@@ -316,6 +318,7 @@ export const DEPLOYS: Deploy[] = [
     id: 'dep-1091',
     service: 'inventory-service',
     version: 'v1.9',
+    previousVersion: 'v1.8',
     at: isoAtMinute(14), // 13:44
     author: 'team-catalog',
     changes: ['Raise stock-lookup cache TTL 30s -> 300s', 'Drop unused /v1/stock/legacy route'],
@@ -335,6 +338,7 @@ export const DEPLOYS: Deploy[] = [
     id: 'dep-1104',
     service: 'checkout-service',
     version: 'v2.14',
+    previousVersion: 'v2.13',
     at: isoAtMinute(42), // 14:12
     author: 'team-commerce',
     changes: [
@@ -363,6 +367,7 @@ export const DEPLOYS: Deploy[] = [
     id: 'dep-1112',
     service: 'user-service',
     version: 'v3.2',
+    previousVersion: 'v3.1',
     at: isoAtMinute(85), // 14:55
     author: 'team-identity',
     changes: ['Add GET /v2/profile', 'Bump jackson 2.17.1 -> 2.17.2'],
