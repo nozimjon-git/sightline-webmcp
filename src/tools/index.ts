@@ -206,6 +206,9 @@ const getServiceHealth = defineTool({
     'current p50 and p99 latency in milliseconds, current error rate as a percentage, the names of any alerts firing ' +
     'right now, and what each service depends on. Use it before querying metrics: more than one service looks slightly ' +
     'off in this incident and only one of them is the actual problem. ' +
+    'You are working in a console the on-call engineer is watching, and they cannot see this conversation. Anything ' +
+    'you conclude reaches them only if you pin it with pin_finding, and any action you want taken only reaches them ' +
+    'through propose_rollback. Investigating without doing both leaves them with nothing. ' +
     'Side effect: selects the most severely affected service in the on-screen console so the on-call engineer can see ' +
     'what you are working on.',
   inputSchema: { type: 'object', properties: {}, additionalProperties: false },
@@ -231,7 +234,7 @@ const getServiceHealth = defineTool({
         as_of: clock(nowIso(s)),
         services: health,
         next: unhealthy.length
-          ? `Compare p99 against p50 on ${worst.service} with query_metrics. A p99 that moves far more than p50 means requests are queueing for a shared resource rather than doing more work.`
+          ? `Compare p99 against p50 on ${worst.service} with query_metrics. A p99 that moves far more than p50 means requests are queueing for a shared resource rather than doing more work. Pin what you establish as you go — the engineer reads the timeline, not your replies.`
           : 'Nothing is alerting. Widen the window on query_metrics if you are investigating something already resolved.',
       },
     );
@@ -287,10 +290,13 @@ const queryMetrics = defineTool({
     s.setWindow(w, 'agent');
 
     const stats = metricStats(service, metric, w, METRIC_UNITS[metric]);
+    const next = stats.anomaly_start
+      ? `Pin this with pin_finding so the engineer sees it. Then read the counterpart metric: if ${metric === 'p99' ? 'p50 stayed flat while p99 moved' : 'p99 moved much further than this'}, the time is spent waiting, and filter_traces will show what it is waiting on.`
+      : `No change point here. If this was a lead you were testing, pin it as ruled out with pin_finding at severity "warning" — a discarded hypothesis is worth as much to the engineer as a confirmed one.`;
     const headline = stats.anomaly_start
       ? `${service} ${metric} changed at ${stats.anomaly_start}: ${stats.baseline}${stats.unit} baseline -> ${stats.peak}${stats.unit} peak (${stats.change_factor}x).`
       : `${service} ${metric} is flat across ${w.label}: baseline ${stats.baseline}${stats.unit}, peak ${stats.peak}${stats.unit} (${stats.change_factor}x), no change point.`;
-    return ok(headline, stats);
+    return ok(headline, { ...stats, next });
   },
 });
 
@@ -360,10 +366,13 @@ const filterTraces = defineTool({
 
     const analysis = analyzeTraces(service, w, minLatency, limit);
     const top = analysis.span_breakdown[0];
+    const next = analysis.dominant_span
+      ? `"${analysis.dominant_span}" holds ${top.pct_of_time}% of the time, so that is the bottleneck, not the endpoint. Pin it with pin_finding, then find what changed: search_logs for the subsystem it names, and correlate_with_deploys for what shipped before the onset.`
+      : 'No single span dominates, so this is not one contended resource. Widen the window or raise min_latency_ms to isolate the slow population.';
     return ok(
       `${analysis.matched} traces for ${service} in ${w.label}; slowest ${analysis.slowest_ms}ms, median ${analysis.median_ms}ms. ` +
         `Time is dominated by "${top.span}" at ${top.pct_of_time}% (avg ${top.avg_ms}ms per trace).`,
-      analysis,
+      { ...analysis, next },
     );
   },
 });
@@ -439,9 +448,12 @@ const searchLogsTool = defineTool({
 
     const result = searchLogs(service, w, extraLogs(s), limit, query, level);
     const top = result.patterns[0];
+    const next =
+      `Pin the pattern and its first_seen (${top.first_seen}) with pin_finding — quote the log text as evidence so the engineer can check it. ` +
+      `Then call correlate_with_deploys to find what shipped shortly before ${top.first_seen}.`;
     return ok(
       `${result.matched} matching lines for ${service} in ${w.label}. Top pattern (${top.level}, ${top.count}x, first seen ${top.first_seen}): ${top.example}`,
-      result,
+      { ...result, next },
     );
   },
 });
@@ -496,11 +508,15 @@ const correlateWithDeploys = defineTool({
     s.markDeploys(result.deploys.map((d) => d.deploy_id), 'agent');
 
     const best = result.deploys[0];
+    const next =
+      best.proximity_score >= 0.5
+        ? `Read ${best.deploy_id}'s diff_note before concluding — the defect is usually written in it. If it explains the anomaly, you are done investigating and should now do two things: pin the causal finding with pin_finding at severity "critical", and call propose_rollback with ${best.deploy_id}. Neither happens by itself, and describing the fix in conversation does not put it in front of the engineer. propose_rollback is safe to call: it only asks, and they decide.`
+        : 'No deploy scores highly enough to be a confident cause. Widen the window, or pin what you have ruled out with pin_finding so the engineer does not retrace it.';
     return ok(
       result.anomaly_start
         ? `Anomaly on ${result.anomaly_service} (${result.anomaly_metric}) starts ${result.anomaly_start}. Best match: ${best.deploy_id} — ${best.service} ${best.version} at ${best.deployed_at}, ${best.minutes_before_anomaly} min before onset, score ${best.proximity_score}.`
         : `No change point detected in ${w.label}, so deploys are listed without proximity scoring.`,
-      result,
+      { ...result, next },
     );
   },
 });
@@ -516,9 +532,12 @@ const pinFinding = defineTool({
   title: 'Pin a finding to the timeline',
   readOnly: false,
   description:
-    'Pin one conclusion to the shared incident timeline in the right-hand pane, where the on-call engineer can read ' +
-    'it. This is how you show your work: pin as you go, one finding per piece of evidence, instead of saving ' +
-    'everything for a summary at the end. ' +
+    'Pin one conclusion to the shared incident timeline in the right-hand pane. This is the only way anything you ' +
+    'work out reaches the on-call engineer: they are looking at the console, not at this conversation, so a ' +
+    'conclusion you only state in your reply is a conclusion they never receive. ' +
+    'Pin as you go — one finding per piece of evidence, at the moment you establish it — rather than saving ' +
+    'everything for a summary at the end. A four-line answer at the end of a long investigation is worth less to ' +
+    'them than four findings pinned against the timestamps they belong to. ' +
     'Write `evidence` so that a human who did not watch you work can verify the claim themselves — include the ' +
     'numbers, span names or log text you actually saw. ' +
     'Findings pinned at severity "critical" are the ones draft_incident_report treats as the stated root cause, so ' +
@@ -592,6 +611,9 @@ const proposeRollback = defineTool({
     'with your reason and returns status "awaiting_human_approval". The rollback happens only if the on-call ' +
     'engineer clicks Approve, and nothing about the system changes until they do — so call this as soon as you have ' +
     'a credible candidate rather than waiting until you are certain. The human is the check, not you. ' +
+    'Call it rather than describing it. Recommending a rollback in your reply puts nothing on their screen; only ' +
+    'this tool renders the card they can act on. You do not need to ask their permission to ask them — that is ' +
+    'what the card is for. ' +
     'Write `reason` for the person about to take production action at 3am: name the deploy, the evidence that ' +
     'implicates it, and what you expect the rollback to fix. ' +
     'After calling this, stop and wait. Poll get_current_view to see what they decided.',
@@ -680,7 +702,8 @@ const draftIncidentReport = defineTool({
     'timeline of deploys, alerts and findings, the findings themselves with attribution to whoever pinned them, a ' +
     'root cause section built from the findings pinned at critical severity, and follow-up actions. ' +
     'Fails if nothing has been pinned yet — the report is assembled from findings, not invented. Call pin_finding for ' +
-    'each conclusion first.',
+    'each conclusion first. Once a rollback has been approved, call this again: the report picks up the mitigation ' +
+    'and the recovery.',
   inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   summarize: () => 'assembled postmortem',
   run: () => {
