@@ -24,6 +24,7 @@ import {
   type ServiceId,
 } from './data/incident';
 import { parseWindow, type TimeWindow } from './lib/time';
+import { buildReport } from './lib/report';
 
 export type Actor = 'agent' | 'human';
 
@@ -143,6 +144,7 @@ export interface AppState {
   /** Human-only. Called from the Dismiss button's onClick and nowhere else. */
   rejectRollback: () => void;
   setReport: (report: IncidentReport) => void;
+  resetIncident: () => void;
   logActivity: (entry: Omit<ActivityEntry, 'id' | 'at'>) => void;
   /** Record who changed a pane and flash it. The one motion idea in the app. */
   touch: (pane: PaneId, by: Actor, label: string) => void;
@@ -151,6 +153,7 @@ export interface AppState {
 
 let activitySeq = 0;
 let findingSeq = 0;
+const STORAGE_KEY = 'sightline-incident-v1';
 
 /**
  * Set by the tool wrapper for the duration of one execute() call, so a pane's
@@ -178,21 +181,55 @@ const emptyPulses: Record<PaneId, number> = {
   handoff: 0,
 };
 
-export const useStore = create<AppState>((set, get) => ({
-  selectedService: 'checkout-service',
-  metric: 'p99',
+const initialData = () => ({
+  selectedService: 'checkout-service' as ServiceId,
+  metric: 'p99' as MetricName,
   window: parseWindow('full_incident', LIVE_NOW),
-  selectedTraceId: null,
+  selectedTraceId: null as string | null,
   traceMinLatencyMs: 0,
   traceLimit: 8,
   logQuery: '',
-  logLevel: 'all',
-  markedDeployIds: [],
+  logLevel: 'all' as LogLevel | 'all',
+  markedDeployIds: [] as string[],
+  findings: [] as Finding[],
+  pendingRollback: null as PendingRollback | null,
+  appliedRollback: null as AppliedRollback | null,
+  report: null as IncidentReport | null,
+});
 
-  findings: [],
-  pendingRollback: null,
-  appliedRollback: null,
-  report: null,
+type PersistedState = ReturnType<typeof initialData>;
+
+function readPersistedState(): Partial<PersistedState> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as { version?: number; state?: Partial<PersistedState> };
+    return parsed.version === 1 && parsed.state ? parsed.state : {};
+  } catch {
+    return {};
+  }
+}
+
+const persistedState = readPersistedState();
+findingSeq = Math.max(
+  0,
+  ...(persistedState.findings ?? []).map((finding) => Number(finding.id.replace(/^f-/, '')) || 0),
+);
+
+function rebuildReportIfPresent(s: AppState): IncidentReport | null {
+  if (!s.report) return null;
+  const approved = s.appliedRollback?.decision === 'approved';
+  return buildReport(s.findings, {
+    nowIso: approved ? POST_ROLLBACK_NOW : LIVE_NOW,
+    resolvedAlertIds: approved ? ROLLBACK_RESOLVES : [],
+    appliedRollback: s.appliedRollback,
+  });
+}
+
+export const useStore = create<AppState>((set, get) => ({
+  ...initialData(),
+  ...persistedState,
 
   activity: [],
   pulses: { ...emptyPulses },
@@ -273,6 +310,7 @@ export const useStore = create<AppState>((set, get) => ({
   addFinding: (finding) => {
     const full: Finding = { ...finding, id: `f-${++findingSeq}`, pinnedAt: new Date().toISOString() };
     set((s) => ({ findings: [...s.findings, full] }));
+    if (get().report) set({ report: rebuildReportIfPresent(get()) });
     get().touch('timeline', finding.pinnedBy, `pinned "${finding.title.slice(0, 34)}"`);
     if (finding.pinnedBy === 'human') {
       get().logActivity({ actor: 'human', label: 'pinned finding', detail: finding.title, ok: true });
@@ -283,6 +321,7 @@ export const useStore = create<AppState>((set, get) => ({
   removeFinding: (id) => {
     const removed = get().findings.find((f) => f.id === id);
     set((s) => ({ findings: s.findings.filter((f) => f.id !== id) }));
+    if (get().report) set({ report: rebuildReportIfPresent(get()) });
     get().touch('timeline', 'human', 'removed a finding');
     if (removed) get().logActivity({ actor: 'human', label: 'removed finding', detail: removed.title, ok: true });
   },
@@ -306,7 +345,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (!pending) return;
     set({
       pendingRollback: null,
-      appliedRollback: { ...pending, decidedAt: new Date().toISOString(), decision: 'approved' },
+      appliedRollback: { ...pending, decidedAt: isoAtMinute(ROLLBACK_MINUTE), decision: 'approved' },
       // Widen the window so the post-rollback telemetry the approval unlocked
       // is actually on screen rather than just off the right edge.
       window: parseWindow('full_incident', POST_ROLLBACK_NOW),
@@ -327,6 +366,10 @@ export const useStore = create<AppState>((set, get) => ({
     get().touch('rollback', 'human', `approved ${pending.deployId}`);
     get().touch('chart', 'human', 'post-rollback data');
     get().touch('services', 'human', 'alerts cleared');
+    if (get().report) {
+      set({ report: rebuildReportIfPresent(get()) });
+      get().touch('report', 'human', 'refreshed after rollback');
+    }
   },
 
   rejectRollback: () => {
@@ -334,10 +377,14 @@ export const useStore = create<AppState>((set, get) => ({
     if (!pending) return;
     set({
       pendingRollback: null,
-      appliedRollback: { ...pending, decidedAt: new Date().toISOString(), decision: 'rejected' },
+      appliedRollback: { ...pending, decidedAt: LIVE_NOW, decision: 'rejected' },
     });
     get().logActivity({ actor: 'human', label: 'DISMISSED rollback', detail: pending.deployId, ok: true });
     get().touch('rollback', 'human', `dismissed ${pending.deployId}`);
+    if (get().report) {
+      set({ report: rebuildReportIfPresent(get()) });
+      get().touch('report', 'human', 'refreshed after decision');
+    }
   },
 
   setReport: (report) => {
@@ -345,8 +392,45 @@ export const useStore = create<AppState>((set, get) => ({
     get().touch('report', 'agent', `${report.findingCount} findings`);
   },
 
+  resetIncident: () => {
+    findingSeq = 0;
+    activitySeq = 0;
+    set({
+      ...initialData(),
+      activity: [],
+      pulses: { ...emptyPulses },
+      provenance: {},
+    });
+    get().logActivity({ actor: 'human', label: 'reset incident', detail: 'restarted the deterministic scenario', ok: true });
+  },
+
   setMcp: (mcp) => set({ mcp }),
 }));
+
+if (typeof window !== 'undefined') {
+  useStore.subscribe((s) => {
+    const state: PersistedState = {
+      selectedService: s.selectedService,
+      metric: s.metric,
+      window: s.window,
+      selectedTraceId: s.selectedTraceId,
+      traceMinLatencyMs: s.traceMinLatencyMs,
+      traceLimit: s.traceLimit,
+      logQuery: s.logQuery,
+      logLevel: s.logLevel,
+      markedDeployIds: s.markedDeployIds,
+      findings: s.findings,
+      pendingRollback: s.pendingRollback,
+      appliedRollback: s.appliedRollback,
+      report: s.report,
+    };
+    try {
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, state }));
+    } catch {
+      // Storage can be unavailable in hardened/private contexts; the app still works in-memory.
+    }
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Derived state. A rollback moves the world forward; these three selectors are
