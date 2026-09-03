@@ -73,6 +73,7 @@ export function TraceTable() {
                   return (
                     <tr
                       key={t.id}
+                      data-trace-id={t.id}
                       tabIndex={0}
                       aria-selected={isSel}
                       onClick={() => selectTrace(t.id, 'human')}

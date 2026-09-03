@@ -209,6 +209,25 @@ The regression suite covers the telemetry approval boundary, recovery
 classification, malformed and oversized inputs, cancellation, synchronized
 reports, and preserved decision timestamps.
 
+## Keyboard
+
+The console is driven from the home row, because every tool it sits next to is:
+
+| | |
+| --- | --- |
+| `[` `]` | previous / next service |
+| `1` `2` `3` | p99 · p50 · error rate |
+| `w` | cycle the time window |
+| `j` `k` | next / previous trace |
+| `x` | close the open trace |
+| `/` | search the log stream |
+| `?` | the shortcut list |
+
+Approving a rollback is deliberately **not** bound to a key. It is the one
+irreversible action in the application, and it stays a click on a button that
+only exists while a proposal is open — a stray keystroke should never be able to
+ship a production change.
+
 ## Interface and accessibility
 
 Every pane carries a provenance stamp in its header naming who last changed it

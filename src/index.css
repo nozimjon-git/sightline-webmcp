@@ -16,56 +16,64 @@
 */
 @theme {
   /*
-    A light, high-density operations console.
+    An instrument panel, not a dashboard.
 
-    The obvious move for an incident tool is a dark slate ground with one warm
-    accent, and that is exactly why this is not that: it is the look every
-    generated dashboard arrives at, and on this brief it reads as a template
-    rather than a decision. Density done in the light is harder and rarer, and
-    it is what the tools engineers actually trust at work look like.
+    The generated default for a tool like this is a neutral near-black ground
+    with one bright accent, so this goes somewhere with an actual point of view:
+    a deep indigo ground, amber for anomaly, cyan for the agent.
 
-    Panels are white and sit on a cool grey ground, so a pane is a surface with
-    an edge rather than a darker rectangle. Hairlines do the dividing. Colour is
-    reserved almost entirely for meaning: one signal red for genuine anomaly,
-    one deep blue for the agent, and the diff's own red and green where a diff
-    is being shown.
+    Amber is not a stylistic choice. In real instrumentation amber means caution
+    and red is reserved for a system that has stopped; this incident is a
+    service degrading under load, so amber is the honest signal. Severity is
+    still carried structurally — an outline of the hue is degraded, a fill is
+    critical — so there is exactly one alert colour.
+
+    Cyan sits opposite it on the wheel and is used for one thing only: what the
+    agent touched. A human should be able to read the screen at a glance and
+    know which marks are the system's and which are the agent's.
   */
-  --color-ground: #eef0f2;
-  --color-pane: #ffffff;
-  --color-raised: #f2f4f6;
-  --color-line: #dfe3e7;
-  --color-line-strong: #bcc4cb;
+  --color-ground: #0e1016;
+  --color-pane: #141824;
+  --color-raised: #1c2231;
+  --color-line: #232a3a;
+  --color-line-strong: #35405a;
 
-  --color-ink: #10151a;
-  --color-ink-dim: #4d585f;
-  --color-ink-faint: #7d8890;
+  --color-ink: #e2e7f2;
+  --color-ink-dim: #99a3ba;
+  --color-ink-faint: #6b768d;
 
-  /* Genuine anomaly state only. A deep signal red, not a decorative orange. */
-  --color-alert: #c0392b;
-  --color-alert-deep: #8c2419;
-  --color-on-alert: #ffffff;
+  /* Genuine anomaly state only. */
+  --color-alert: #e8a13c;
+  --color-alert-deep: #7a4f14;
+  --color-alert-wash: #241a0d;
+  --color-on-alert: #12141c;
 
   /* Everything the agent touched. Never used for severity. */
-  --color-agent: #1f6193;
-  --color-agent-deep: #164a72;
+  --color-agent: #4fc3d9;
+  --color-agent-deep: #1b4b57;
+  --color-agent-wash: #10222a;
 
-  /* Diff notation only. Red and green are the language a unified diff is
-     written in; rendering one in the app's single alert hue would make it
-     harder to read in order to prove a point about restraint. */
-  --color-add: #1a7f4b;
-  --color-add-wash: #e7f5ec;
-  --color-alert-wash: #fdeceb;
+  /* Diff notation only: the language a unified diff is written in. Kept apart
+     from the alert hue so a removed line never reads as an alarm. */
+  --color-add: #57a97c;
+  --color-add-wash: #11241a;
+  --color-del: #e0675c;
+  --color-del-wash: #26161a;
 
-  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 
-  --text-2xs: 0.75rem;
-  --text-2xs--line-height: 1.1rem;
-  --text-xs: 0.8125rem;
-  --text-xs--line-height: 1.2rem;
+  /* JetBrains Mono sets noticeably wider than Plex Mono at the same size, so
+     the scale steps down and the mono tracking tightens to keep the same number
+     of columns of data on screen. Density is the point; the typeface serves it. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1.05rem;
+  --text-xs: 0.78125rem;
+  --text-xs--line-height: 1.15rem;
   --text-sm: 0.875rem;
   --text-sm--line-height: 1.3rem;
 }
+
 
 
 html,
@@ -92,6 +100,17 @@ body {
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+.font-mono {
+  letter-spacing: -0.012em;
+}
+
+/* Space Grotesk runs slightly loose for UI at these sizes. */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.008em;
 }
 
 /* Tabular figures everywhere numbers change in place. */
@@ -224,12 +243,16 @@ body {
   }
 }
 
-@media (max-width: 1279px) {
-  .header-window {
+/* The plot already draws the change point as a line; the chip is the caption,
+   and it is the first thing to go when the header runs out of room. */
+@media (max-width: 1535px) {
+  .chart-changepoint {
     display: none;
   }
+}
 
-  .chart-changepoint {
+@media (max-width: 1279px) {
+  .header-window {
     display: none;
   }
 

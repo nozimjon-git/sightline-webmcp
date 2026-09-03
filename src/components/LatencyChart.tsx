@@ -34,7 +34,7 @@ const PRESETS: { label: string; value: string }[] = [
   { label: 'all', value: 'full_incident' },
 ];
 
-const COLOR = { normal: '#4d585f', alert: '#c0392b', agent: '#1f6193', line: '#e6e9ec', faint: '#7d8890' };
+const COLOR = { normal: '#99a3ba', alert: '#e8a13c', agent: '#4fc3d9', line: '#232a3a', faint: '#6b768d' };
 
 interface Row {
   t: string;
@@ -134,7 +134,7 @@ export function LatencyChart() {
                 onClick={() => setMetric(m, 'human')}
                 aria-pressed={metric === m}
                 aria-label={`Show ${METRIC_LABELS[m]}`}
-                className={`control-hit border border-line px-2 font-mono text-2xs -ml-px first:ml-0 ${
+                className={`control-hit border border-line px-1.5 font-mono text-2xs -ml-px first:ml-0 ${
                   metric === m ? 'border-line-strong bg-raised text-ink' : 'text-ink-faint hover:text-ink-dim'
                 }`}
               >
@@ -149,7 +149,7 @@ export function LatencyChart() {
                 type="button"
                 onClick={() => setWindow(parseWindow(p.value, now), 'human')}
                 aria-label={`Show ${p.label === 'all' ? 'the full incident' : `the last ${p.label}`}`}
-                className="control-hit -ml-px border border-line px-2 font-mono text-2xs text-ink-faint first:ml-0 hover:text-ink-dim"
+                className="control-hit -ml-px border border-line px-1.5 font-mono text-2xs text-ink-faint first:ml-0 hover:text-ink-dim"
               >
                 {p.label}
               </button>
@@ -243,7 +243,7 @@ export function LatencyChart() {
               endIndex={endIndex}
               onChange={onBrush}
               stroke={COLOR.faint}
-              fill="#f7f8f9"
+              fill="#141824"
               travellerWidth={7}
               tickFormatter={() => ''}
             />

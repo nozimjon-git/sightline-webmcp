@@ -14,12 +14,12 @@
  */
 
 const ADDED = 'text-add';
-const REMOVED = 'text-alert';
+const REMOVED = 'text-del';
 
 function lineTone(line: string): { tone: string; gutter: string; bg: string } {
   if (line.startsWith('@@')) return { tone: 'text-agent', gutter: ' ', bg: '' };
   if (line.startsWith('+')) return { tone: ADDED, gutter: '+', bg: 'bg-add-wash' };
-  if (line.startsWith('-')) return { tone: REMOVED, gutter: '-', bg: 'bg-alert-wash' };
+  if (line.startsWith('-')) return { tone: REMOVED, gutter: '-', bg: 'bg-del-wash' };
   return { tone: 'text-ink-faint', gutter: ' ', bg: '' };
 }
 

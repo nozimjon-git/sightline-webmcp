@@ -62,7 +62,7 @@ export function LogStream() {
                 type="button"
                 onClick={() => setLogFilter({ level: l }, 'human')}
                 aria-pressed={level === l}
-                className={`control-hit -ml-px border border-line px-2 font-mono text-2xs first:ml-0 ${
+                className={`control-hit -ml-px border border-line px-1.5 font-mono text-2xs first:ml-0 ${
                   level === l ? 'border-line-strong bg-raised text-ink' : 'text-ink-faint hover:text-ink-dim'
                 }`}
               >

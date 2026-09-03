@@ -19,7 +19,7 @@ export function ActivityTicker() {
             : 'no agent host detected; the console is fully usable by hand'}
         </span>
       ) : (
-        <ol className="flex min-w-0 items-center gap-3">
+        <ol className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
           {activity.slice(0, 6).map((e) => (
             <li key={e.id} className="flex shrink-0 items-baseline gap-1.5 font-mono text-2xs">
               <span className={e.actor === 'agent' ? 'text-agent' : 'text-ink-dim'}>
@@ -32,6 +32,10 @@ export function ActivityTicker() {
           ))}
         </ol>
       )}
+      <span className="ml-auto hidden shrink-0 items-center gap-1.5 border-l border-line pl-3 font-mono text-2xs text-ink-faint sm:flex">
+        <kbd className="border border-line px-1 text-agent">?</kbd>
+        keys
+      </span>
     </footer>
   );
 }

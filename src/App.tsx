@@ -7,6 +7,7 @@ import { LogStream } from './components/LogStream';
 import { ReportCard } from './components/ReportCard';
 import { RollbackCard } from './components/RollbackCard';
 import { ServiceRail } from './components/ServiceRail';
+import { ShortcutsOverlay, useShortcuts } from './components/Shortcuts';
 import { TraceTable } from './components/TraceTable';
 import { registerTools } from './lib/webmcp';
 import { TOOLS, TOOL_BY_NAME } from './tools';
@@ -18,6 +19,7 @@ let registrationStarted = false;
 
 export default function App() {
   const setMcp = useStore((s) => s.setMcp);
+  const { helpOpen, closeHelp } = useShortcuts();
 
   useEffect(() => {
     if (registrationStarted) return;
@@ -60,6 +62,7 @@ export default function App() {
         </aside>
       </main>
       <ActivityTicker />
+      <ShortcutsOverlay open={helpOpen} onClose={closeHelp} />
     </div>
   );
 }
