@@ -1,0 +1,127 @@
+@import 'tailwindcss';
+
+/*
+  Sightline palette. Three semantic roles, kept strictly apart:
+
+    slate   — the ground. Everything that is merely information.
+    alert   — one hue, #e2724e, used ONLY for genuine anomaly state.
+              Severity is encoded structurally, not with a second colour:
+              a hairline of the hue means degraded, a solid fill means critical.
+    agent   — one cool steel, used ONLY to mark what the agent touched:
+              provenance stamps, the pane flash, agent-pinned findings.
+
+  No gradients, no card shadows, no radii above 2px. Panes are separated by
+  hairlines on a shared ground rather than floating as tiles, so density and
+  alignment carry the seriousness instead of decoration.
+*/
+@theme {
+  --color-ground: #171b1e;
+  --color-pane: #1b2023;
+  --color-raised: #212729;
+  --color-line: #2a3134;
+  --color-line-strong: #394347;
+
+  --color-ink: #d9dfe1;
+  --color-ink-dim: #97a2a6;
+  --color-ink-faint: #6a7579;
+
+  --color-alert: #e2724e;
+  --color-alert-deep: #7e3826;
+  --color-agent: #8fb3c4;
+  --color-agent-deep: #33505c;
+
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tabular figures everywhere numbers change in place. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+  The only motion in the application. When a tool mutates a pane, that pane gets
+  one sharp inset flash in the colour of whoever caused it. Nothing else moves.
+*/
+@keyframes touch-flash {
+  0% {
+    box-shadow:
+      inset 0 0 0 1px var(--flash-hue),
+      inset 0 0 26px -10px var(--flash-hue);
+  }
+  70% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--flash-hue) 45%, transparent),
+      inset 0 0 26px -10px transparent;
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 1px transparent,
+      inset 0 0 26px -10px transparent;
+  }
+}
+
+.touch-flash {
+  animation: touch-flash 760ms cubic-bezier(0.16, 0.84, 0.28, 1) 1;
+}
+
+.flash-agent {
+  --flash-hue: var(--color-agent);
+}
+
+.flash-human {
+  --flash-hue: var(--color-ink-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .touch-flash {
+    animation: none;
+    box-shadow: inset 0 0 0 1px var(--flash-hue);
+  }
+}
+
+*:focus-visible {
+  outline: 1px solid var(--color-agent);
+  outline-offset: 1px;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4a565b;
+}
+
+.recharts-surface:focus {
+  outline: none;
+}

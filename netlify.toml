@@ -1,0 +1,18 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# WebMCP silently disables itself on documents that are not origin-keyed.
+# `?1` opts this origin into its own agent cluster; sending `?0` (or omitting the
+# header on a shared-origin host) breaks document.modelContext.registerTool().
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Origin-Agent-Cluster = "?1"
+    Permissions-Policy = "tools=(self)"
+    X-Content-Type-Options = "nosniff"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
