@@ -135,6 +135,12 @@ interface ToolSpec {
   description: string;
   inputSchema: JsonSchema;
   readOnly: boolean;
+  /**
+   * Set where a tool returns text an outside party could have influenced. Log
+   * messages in any real system contain attacker-supplied strings, so the host
+   * should treat this tool's output as data rather than as instructions.
+   */
+  untrustedContent?: boolean;
   /** Short line for the human-visible activity feed. */
   summarize: (input: Record<string, unknown>) => string;
   run: (input: Record<string, unknown>) => ToolResult;
@@ -146,7 +152,7 @@ function defineTool(spec: ToolSpec): ToolDefinition {
     title: spec.title,
     description: spec.description,
     inputSchema: spec.inputSchema,
-    annotations: { readOnlyHint: spec.readOnly },
+    annotations: { readOnlyHint: spec.readOnly, untrustedContentHint: spec.untrustedContent ?? false },
     execute: async (input) => {
       const args = (input ?? {}) as Record<string, unknown>;
       try {
@@ -220,7 +226,14 @@ const getServiceHealth = defineTool({
       unhealthy.length
         ? `${unhealthy.length} of ${health.length} services unhealthy. Worst: ${worst.service} (${worst.status}, p99 ${worst.p99_ms}ms, ${worst.error_rate_pct}% errors).`
         : `All ${health.length} services healthy as of ${clock(nowIso(s))}.`,
-      { incident: INCIDENT.id, as_of: clock(nowIso(s)), services: health },
+      {
+        incident: INCIDENT.id,
+        as_of: clock(nowIso(s)),
+        services: health,
+        next: unhealthy.length
+          ? `Compare p99 against p50 on ${worst.service} with query_metrics. A p99 that moves far more than p50 means requests are queueing for a shared resource rather than doing more work.`
+          : 'Nothing is alerting. Widen the window on query_metrics if you are investigating something already resolved.',
+      },
     );
   },
 });
@@ -289,6 +302,7 @@ const filterTraces = defineTool({
   name: 'filter_traces',
   title: 'Filter distributed traces',
   readOnly: true,
+  untrustedContent: true,
   description:
     'Fetch exemplar distributed traces for one service and, more usefully, an aggregate of where those traces spend ' +
     'their time. Returns the matched count, slowest and median duration, how many matched traces errored, a ' +
@@ -364,6 +378,7 @@ const searchLogsTool = defineTool({
   name: 'search_logs',
   title: 'Search the log stream',
   readOnly: true,
+  untrustedContent: true,
   description:
     'Search one service\'s log stream in a time window and get back grouped patterns rather than raw lines. Digits and ' +
     'hex ids are collapsed so repeated messages count as one pattern; each pattern reports its level, occurrence ' +
