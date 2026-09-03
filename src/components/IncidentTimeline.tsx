@@ -27,10 +27,12 @@ export function IncidentTimeline() {
   const removeFinding = useStore((s) => s.removeFinding);
   const resetIncident = useStore((s) => s.resetIncident);
   const sorted = [...findings].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  // The banner under the header already carries the no-host diagnosis; saying
+  // it again here is two notices for one condition.
   const toolLine =
     mcp.state === 'connected'
       ? `WebMCP · ${mcp.toolCount} registered tools · shared live state`
-      : 'No WebMCP host detected · this console is fully usable by hand';
+      : 'Nine tools are defined and ready for a host · every one is also a control on this page';
 
   const copyPrompt = async () => {
     try {

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { ActivityTicker } from './components/ActivityTicker';
 import { Header } from './components/Header';
+import { HostBanner } from './components/HostBanner';
 import { DecisionRail } from './components/DecisionRail';
 import { InvestigationWorkspace } from './components/InvestigationWorkspace';
 import { ServiceRail } from './components/ServiceRail';
@@ -56,6 +57,7 @@ export default function App() {
         Skip to the evidence
       </a>
       <Header />
+      <HostBanner />
       <main className="app-main flex min-h-0 flex-1">
         <ServiceRail />
         <div className="workspace-stack flex min-h-0 min-w-0 flex-1 flex-col">

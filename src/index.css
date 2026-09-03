@@ -1270,6 +1270,7 @@ button:disabled {
   background: #0c0f15;
 }
 
+
 .activity-heading {
   display: flex;
   flex-direction: column;
@@ -1393,7 +1394,8 @@ button:disabled {
   .touch-flash { animation: none; box-shadow: inset 0 0 0 1px var(--flash-hue); }
   .workspace-scroll { scroll-behavior: auto; }
   .decision-rail,
-  .skip-link { transition: none; }
+  .skip-link,
+  .host-banner-toggle svg { transition: none; }
 }
 
 @media (max-width: 1320px) {
@@ -1705,6 +1707,401 @@ button:disabled {
 .proposal-reason {
   max-width: none;
   font-size: 11px !important;
+}
+
+/* Manual vs agent-assisted */
+.impact-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.impact-table th,
+.impact-table td {
+  padding: 5px 0;
+  font-size: 11px;
+  font-weight: 400;
+  text-align: right;
+}
+
+.impact-table thead th {
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-ink-faint);
+  white-space: nowrap;
+}
+
+.impact-table thead th.is-agent {
+  color: var(--color-agent);
+}
+
+.impact-table tbody th {
+  color: var(--color-ink-dim);
+  text-align: left;
+}
+
+.impact-table tbody td {
+  padding-left: 9px;
+  color: var(--color-ink-faint);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.impact-table tbody td.is-agent {
+  color: var(--color-agent);
+}
+
+.impact-note {
+  margin: 9px 0 0;
+  color: var(--color-ink-faint);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.sr-only {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Judge entry point */
+.judge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 9px 0;
+}
+
+.reset-demo {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-line);
+  padding: 0 11px;
+  color: var(--color-ink-dim);
+  font-size: 11px;
+}
+
+.reset-demo:hover {
+  border-color: var(--color-line-strong);
+  color: var(--color-ink);
+}
+
+/* No host: say why, and what to do about it */
+/* WebMCP status bar, under the header where it can be read. */
+.host-banner {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--color-alert-deep);
+  background: var(--color-alert-wash);
+}
+
+.host-banner-bar {
+  display: flex;
+  min-height: 40px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 6px 14px;
+}
+
+.host-banner-bar > svg {
+  flex: 0 0 auto;
+  color: var(--color-alert);
+}
+
+.host-banner p {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 22rem;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 9px;
+  margin: 0;
+}
+
+.host-banner strong {
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.host-banner p span {
+  color: var(--color-ink-dim);
+  font-size: 11px;
+}
+
+.host-banner-toggle,
+.host-banner-retry {
+  display: inline-flex;
+  min-height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-alert-deep);
+  background: transparent;
+  padding: 0 10px;
+  color: var(--color-ink-dim);
+  font-size: 11px;
+}
+
+.host-banner-toggle:hover,
+.host-banner-retry:hover {
+  border-color: var(--color-alert);
+  color: var(--color-ink);
+}
+
+.host-banner-toggle svg {
+  transition: transform 120ms ease-out;
+}
+
+.host-banner-toggle.is-open svg {
+  transform: rotate(180deg);
+}
+
+/* Pairs flow inline while there is width for them and stack when there is not,
+   so the facts never need a scrollbar of their own. */
+.host-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0;
+  border-top: 1px solid var(--color-alert-deep);
+  padding: 9px 14px 10px;
+}
+
+.host-facts dt {
+  color: var(--color-ink-faint);
+  font-size: 11px;
+}
+
+.host-facts dd {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 12px 0 0;
+  color: var(--color-ink-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.host-fact-error {
+  max-width: 74ch;
+  color: var(--color-alert);
+}
+
+.flag-copy {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  border: 1px solid var(--color-line);
+  background: var(--color-ground);
+  padding: 2px 6px;
+  color: var(--color-agent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.flag-copy svg {
+  align-self: center;
+}
+
+.flag-copy:hover {
+  border-color: var(--color-agent-deep);
+  background: var(--color-agent-wash);
+}
+
+/* Manual vs agent-assisted */
+.impact-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.impact-table th,
+.impact-table td {
+  padding: 5px 0;
+  font-size: 11px;
+  font-weight: 400;
+  text-align: right;
+}
+
+.impact-table thead th {
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-ink-faint);
+  white-space: nowrap;
+}
+
+.impact-table thead th.is-agent {
+  color: var(--color-agent);
+}
+
+.impact-table tbody th {
+  color: var(--color-ink-dim);
+  text-align: left;
+}
+
+.impact-table tbody td {
+  padding-left: 9px;
+  color: var(--color-ink-faint);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.impact-table tbody td.is-agent {
+  color: var(--color-agent);
+}
+
+.impact-note {
+  margin: 9px 0 0;
+  color: var(--color-ink-faint);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.sr-only {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Judge entry point */
+.judge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 9px 0;
+}
+
+.reset-demo {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-line);
+  padding: 0 11px;
+  color: var(--color-ink-dim);
+  font-size: 11px;
+}
+
+.reset-demo:hover {
+  border-color: var(--color-line-strong);
+  color: var(--color-ink);
+}
+
+/* No host: say why, and what to do about it */
+.host-diagnostic {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 2px 0 4px;
+}
+
+.host-diagnostic > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--color-alert);
+}
+
+.host-diagnostic-body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.host-diagnostic-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-bottom: 7px;
+}
+
+.host-diagnostic-lead strong {
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.host-diagnostic-lead span {
+  color: var(--color-ink-dim);
+  font-size: 11px;
+}
+
+/* Pairs flow inline while there is width for them and stack when there is not,
+   so the facts never need a scrollbar of their own. */
+.host-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 8px;
+  margin: 0;
+}
+
+.host-facts dt {
+  color: var(--color-ink-faint);
+  font-size: 11px;
+}
+
+.host-facts dt::after {
+  content: '';
+}
+
+.host-facts dd {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 12px 0 0;
+  color: var(--color-ink-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.host-fact-error {
+  max-width: 70ch;
+  color: var(--color-alert);
+}
+
+.flag-copy {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  border: 1px solid var(--color-line);
+  background: var(--color-ground);
+  padding: 2px 6px;
+  color: var(--color-agent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.flag-copy svg {
+  align-self: center;
+}
+
+.flag-copy:hover {
+  border-color: var(--color-agent-deep);
+  background: var(--color-agent-wash);
+}
+
+.host-retry {
+  display: inline-flex;
+  min-height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-line-strong);
+  padding: 0 12px;
+  color: var(--color-ink);
+  font-size: 11px;
+}
+
+.host-retry:hover {
+  border-color: var(--color-agent);
+  color: var(--color-agent);
 }
 
 /* Manual vs agent-assisted */
