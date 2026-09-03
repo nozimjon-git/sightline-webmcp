@@ -34,7 +34,7 @@ export function LogStream() {
     <Pane
       id="logs"
       title="Logs"
-      className="min-h-0 flex-1"
+      className="logs-pane min-h-0 flex-1"
       bodyClassName="min-h-0"
       controls={
         <div className="flex min-w-0 items-center gap-2">
@@ -43,7 +43,9 @@ export function LogStream() {
             value={query}
             placeholder="filter…"
             onChange={(e) => setLogFilter({ query: e.target.value }, 'human')}
-            className="w-40 border border-line bg-ground px-1.5 py-0.5 font-mono text-2xs text-ink placeholder:text-ink-faint"
+            aria-label="Filter log messages"
+            maxLength={120}
+            className="control-hit w-40 border border-line bg-ground px-1.5 font-mono text-2xs text-ink placeholder:text-ink-faint"
           />
           <div className="flex">
             {LEVELS.map((l) => (
@@ -51,7 +53,8 @@ export function LogStream() {
                 key={l}
                 type="button"
                 onClick={() => setLogFilter({ level: l }, 'human')}
-                className={`-ml-px border border-line px-1.5 py-0.5 font-mono text-2xs first:ml-0 ${
+                aria-pressed={level === l}
+                className={`control-hit -ml-px border border-line px-2 font-mono text-2xs first:ml-0 ${
                   level === l ? 'border-line-strong bg-raised text-ink' : 'text-ink-faint hover:text-ink-dim'
                 }`}
               >

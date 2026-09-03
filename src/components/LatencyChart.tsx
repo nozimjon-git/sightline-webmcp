@@ -16,6 +16,7 @@ import {
   METRIC_LABELS,
   METRIC_UNITS,
   SERIES,
+  T0_ISO,
   clock,
   minuteOfIso,
   type MetricName,
@@ -103,12 +104,25 @@ export function LatencyChart() {
 
   const unit = METRIC_UNITS[metric];
   const visible = DEPLOYS.filter((d) => minuteOfIso(d.at) <= lastMinute);
+  const currentValue = rows[rows.length - 1]?.v ?? 0;
+  const peakValue = rows.reduce((max, row) => Math.max(max, row.v), 0);
+
+  const updateClockBoundary = (boundary: 'start' | 'end', value: string) => {
+    if (!value) return;
+    const start = boundary === 'start' ? value : clock(window.startIso);
+    const end = boundary === 'end' ? value : clock(window.endIso);
+    try {
+      setWindow(parseWindow(`${start}-${end}`, now), 'human');
+    } catch {
+      // Keep the last valid range; native input constraints explain the boundary.
+    }
+  };
 
   return (
     <Pane
       id="chart"
       title={`${service} · ${METRIC_LABELS[metric]}`}
-      className="h-[38%] shrink-0 border-b border-line"
+      className="chart-pane h-[38%] shrink-0 border-b border-line"
       bodyClassName="flex flex-col"
       controls={
         <div className="flex items-center gap-3">
@@ -118,7 +132,9 @@ export function LatencyChart() {
                 key={m}
                 type="button"
                 onClick={() => setMetric(m, 'human')}
-                className={`border border-line px-1.5 py-0.5 font-mono text-2xs -ml-px first:ml-0 ${
+                aria-pressed={metric === m}
+                aria-label={`Show ${METRIC_LABELS[m]}`}
+                className={`control-hit border border-line px-2 font-mono text-2xs -ml-px first:ml-0 ${
                   metric === m ? 'border-line-strong bg-raised text-ink' : 'text-ink-faint hover:text-ink-dim'
                 }`}
               >
@@ -132,7 +148,8 @@ export function LatencyChart() {
                 key={p.value}
                 type="button"
                 onClick={() => setWindow(parseWindow(p.value, now), 'human')}
-                className="-ml-px border border-line px-1.5 py-0.5 font-mono text-2xs text-ink-faint first:ml-0 hover:text-ink-dim"
+                aria-label={`Show ${p.label === 'all' ? 'the full incident' : `the last ${p.label}`}`}
+                className="control-hit -ml-px border border-line px-2 font-mono text-2xs text-ink-faint first:ml-0 hover:text-ink-dim"
               >
                 {p.label}
               </button>
@@ -144,7 +161,11 @@ export function LatencyChart() {
         </div>
       }
     >
-      <div className="min-h-0 flex-1 pt-2 pr-3">
+      <div
+        className="min-h-0 flex-1 pt-2 pr-3"
+        role="img"
+        aria-label={`${service} ${METRIC_LABELS[metric]} from ${window.label} UTC. Current ${currentValue}${unit}; peak ${peakValue}${unit}${anomalyClock ? `; anomaly began ${anomalyClock}` : ''}.`}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} syncId="sightline">
             <CartesianGrid stroke={COLOR.line} strokeDasharray="0" vertical={false} />
@@ -227,11 +248,38 @@ export function LatencyChart() {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <p className="shrink-0 px-3 pb-1.5 pt-1 text-2xs text-ink-faint">
-        Drag the handles under the chart to change the window. Whatever you land on is what{' '}
-        <span className="font-mono text-ink-dim">get_current_view</span> hands your agent
-        {lastMinute > LIVE_MINUTES ? ' · dashed segment is post-rollback telemetry' : ''}.
-      </p>
+      <div className="chart-footer flex shrink-0 items-center justify-between gap-3 px-3 pb-2 pt-1 text-2xs text-ink-faint">
+        <p className="min-w-0">
+          Drag the chart handles or set an exact range. <span className="font-mono text-ink-dim">get_current_view</span>{' '}
+          shares this selection{lastMinute > LIVE_MINUTES ? ' · dashed line is recovery' : ''}.
+        </p>
+        <div className="flex shrink-0 items-center gap-2" aria-label="Exact chart time range">
+          <label className="flex items-center gap-1">
+            <span>from</span>
+            <input
+              type="time"
+              min={clock(T0_ISO)}
+              max={clock(window.endIso)}
+              step={60}
+              value={clock(window.startIso)}
+              onChange={(event) => updateClockBoundary('start', event.target.value)}
+              className="control-hit w-[5.6rem] border border-line bg-ground px-1.5 font-mono text-2xs text-ink"
+            />
+          </label>
+          <label className="flex items-center gap-1">
+            <span>to</span>
+            <input
+              type="time"
+              min={clock(window.startIso)}
+              max={clock(now)}
+              step={60}
+              value={clock(window.endIso)}
+              onChange={(event) => updateClockBoundary('end', event.target.value)}
+              className="control-hit w-[5.6rem] border border-line bg-ground px-1.5 font-mono text-2xs text-ink"
+            />
+          </label>
+        </div>
+      </div>
     </Pane>
   );
 }

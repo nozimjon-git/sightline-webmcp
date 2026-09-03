@@ -44,20 +44,20 @@ export default function App() {
   }, [setMcp]);
 
   return (
-    <div className="flex h-full min-w-[1000px] flex-col overflow-x-auto">
+    <div className="app-shell flex h-full min-w-0 flex-col">
       <Header />
-      <main className="flex min-h-0 flex-1">
+      <main className="app-main flex min-h-0 flex-1">
         <ServiceRail />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="center-stack flex min-h-0 min-w-0 flex-1 flex-col">
           <LatencyChart />
           <TraceTable />
           <LogStream />
         </div>
-        <div className="flex w-[26rem] min-h-0 shrink-0 flex-col border-l border-line">
+        <aside className="decision-rail flex w-[26rem] min-h-0 shrink-0 flex-col border-l border-line" aria-label="Incident decisions and report">
           <IncidentTimeline />
           <RollbackCard />
           <ReportCard />
-        </div>
+        </aside>
       </main>
       <ActivityTicker />
     </div>

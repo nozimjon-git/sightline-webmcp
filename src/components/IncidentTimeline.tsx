@@ -17,7 +17,7 @@ export function IncidentTimeline() {
     <Pane
       id="timeline"
       title="Incident timeline"
-      className="min-h-0 flex-1 border-b border-line"
+      className="decision-timeline min-h-0 flex-1 border-b border-line"
       bodyClassName="overflow-y-auto"
       controls={
         findings.length > 0 ? (
@@ -43,7 +43,7 @@ export function IncidentTimeline() {
                       type="button"
                       onClick={() => removeFinding(f.id)}
                       aria-label={`Remove finding: ${f.title}`}
-                      className="shrink-0 text-2xs text-ink-faint opacity-0 group-hover:opacity-100 hover:text-alert"
+                      className="control-hit shrink-0 px-1 text-2xs text-ink-faint opacity-40 group-hover:opacity-100 focus:opacity-100 hover:text-alert"
                     >
                       remove
                     </button>

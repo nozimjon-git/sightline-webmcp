@@ -13,7 +13,7 @@ function McpBadge() {
         ? 'looking for a host…'
         : 'no host — running human-only';
   return (
-    <div className="flex items-center gap-2" title={mcp.message ?? mcp.api}>
+    <div className="flex items-center gap-2" title={mcp.message ?? mcp.api} role="status" aria-live="polite">
       <span className="text-2xs text-ink-faint">webmcp</span>
       <span
         className={`h-1.5 w-1.5 shrink-0 ${mcp.state === 'connected' ? 'bg-agent' : mcp.state === 'error' ? 'bg-alert' : 'bg-line-strong'}`}
@@ -42,14 +42,15 @@ function HandoffChip() {
 }
 
 export function Header() {
-  const window = useStore((s) => s.window);
+  const selectedWindow = useStore((s) => s.window);
   const applied = useStore((s) => s.appliedRollback);
   const now = useStore(nowIso);
+  const resetIncident = useStore((s) => s.resetIncident);
   const live = applied?.decision !== 'approved';
 
   return (
-    <header className="flex h-13 shrink-0 items-center gap-4 border-b border-line bg-pane px-3 py-2">
-      <div className="flex items-center gap-2.5">
+    <header className="app-header flex min-h-14 shrink-0 items-center gap-4 border-b border-line bg-pane px-4 py-2.5">
+      <div className="flex min-w-0 items-center gap-2.5">
         <span
           className={`h-6 w-1 ${live ? 'bg-alert' : 'bg-agent'}`}
           aria-hidden
@@ -57,7 +58,7 @@ export function Header() {
         <div className="leading-tight">
           <div className="flex items-baseline gap-2">
             <span className="font-mono text-xs font-medium text-ink">{incidentMeta.id}</span>
-            <span className="text-sm text-ink">{incidentMeta.title}</span>
+            <span className="truncate text-sm text-ink">{incidentMeta.title}</span>
           </div>
           <div className="font-mono text-2xs text-ink-faint tnum">
             {live ? 'active' : 'mitigated'} · declared {clock(incidentMeta.declaredAt)} · commander {incidentMeta.commander}
@@ -65,16 +66,25 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex-1" />
+      <div className="min-w-3 flex-1" />
 
       <div className="hidden items-baseline gap-2 md:flex">
         <span className="text-2xs text-ink-faint">window</span>
-        <span className="font-mono text-xs text-ink tnum">{window.label}</span>
+        <span className="font-mono text-xs text-ink tnum">{selectedWindow.label}</span>
         <span className="text-2xs text-ink-faint">· now {clock(now)} UTC</span>
       </div>
 
       <HandoffChip />
       <McpBadge />
+      <button
+        type="button"
+        onClick={() => {
+          if (globalThis.confirm('Reset the incident replay and clear this tab’s saved investigation?')) resetIncident();
+        }}
+        className="control-hit shrink-0 border border-line px-2.5 font-mono text-2xs text-ink-dim hover:border-line-strong hover:text-ink"
+      >
+        reset replay
+      </button>
     </header>
   );
 }

@@ -37,7 +37,7 @@ export function RollbackCard() {
     const ok = applied.decision === 'approved';
     return (
       <Pane id="rollback" title="Mitigation" className="shrink-0 border-b border-line">
-        <div className="px-3 py-2">
+        <div className="px-3 py-2.5" role="status" aria-live="polite">
           <div className="flex items-baseline gap-2">
             <span className={`h-2 w-2 shrink-0 ${ok ? 'bg-agent' : 'border border-line-strong'}`} aria-hidden />
             <span className="text-xs text-ink">
@@ -45,7 +45,8 @@ export function RollbackCard() {
             </span>
           </div>
           <p className="mt-1 pl-4 font-mono text-2xs text-ink-faint">
-            {deploy?.service} {deploy?.version} · deployed {deploy ? clock(deploy.at) : '—'} · approved by you
+            {deploy?.service} {deploy?.version} · deployed {deploy ? clock(deploy.at) : '—'} ·{' '}
+            {ok ? 'approved by you' : 'dismissed by you'}
           </p>
           {ok && (
             <p className="mt-1.5 pl-4 text-2xs leading-relaxed text-ink-dim">
@@ -60,7 +61,7 @@ export function RollbackCard() {
   const deploy = DEPLOYS.find((d) => d.id === pending!.deployId);
   return (
     <Pane id="rollback" title="Mitigation · awaiting your approval" className="shrink-0 border-b border-line">
-      <div className="border-l-2 border-alert px-3 py-2">
+      <div className="border-l-2 border-alert px-3 py-2.5" role="alert" aria-live="assertive">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-xs text-ink">
             Roll back {pending!.service} {pending!.version}
@@ -81,14 +82,14 @@ export function RollbackCard() {
           <button
             type="button"
             onClick={approveRollback}
-            className="border border-alert bg-alert px-2.5 py-1 text-2xs font-medium text-ground hover:bg-[#ec7f5c]"
+            className="action-hit border border-alert bg-alert px-3 text-xs font-medium text-ground hover:bg-[#ec7f5c]"
           >
             Approve rollback
           </button>
           <button
             type="button"
             onClick={rejectRollback}
-            className="border border-line px-2.5 py-1 text-2xs text-ink-dim hover:border-line-strong hover:text-ink"
+            className="action-hit border border-line px-3 text-xs text-ink-dim hover:border-line-strong hover:text-ink"
           >
             Dismiss
           </button>

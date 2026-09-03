@@ -80,8 +80,8 @@ export function Pane({ id, title, controls, children, className = '', bodyClassN
   const flash = useTouchFlash(id);
   return (
     <section className={`relative flex min-h-0 min-w-0 flex-col bg-pane ${className}`}>
-      <header className="flex h-8 shrink-0 items-center gap-3 overflow-hidden border-b border-line px-3">
-        <h2 className="shrink-0 truncate text-2xs font-medium tracking-[0.03em] whitespace-nowrap text-ink">{title}</h2>
+      <header className="pane-header flex h-9 shrink-0 items-center gap-3 overflow-hidden border-b border-line px-3">
+        <h2 className="shrink-0 truncate text-xs font-medium tracking-[0.03em] whitespace-nowrap text-ink">{title}</h2>
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">{controls}</div>
         <Stamp pane={id} compact={compactStamp} />
       </header>

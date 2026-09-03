@@ -22,8 +22,8 @@
   --color-line-strong: #394347;
 
   --color-ink: #d9dfe1;
-  --color-ink-dim: #97a2a6;
-  --color-ink-faint: #6a7579;
+  --color-ink-dim: #a9b3b7;
+  --color-ink-faint: #89959a;
 
   --color-alert: #e2724e;
   --color-alert-deep: #7e3826;
@@ -33,12 +33,12 @@
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
 
-  --text-2xs: 0.6875rem;
-  --text-2xs--line-height: 1rem;
-  --text-xs: 0.75rem;
-  --text-xs--line-height: 1.1rem;
-  --text-sm: 0.8125rem;
-  --text-sm--line-height: 1.25rem;
+  --text-2xs: 0.75rem;
+  --text-2xs--line-height: 1.1rem;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.2rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.3rem;
 }
 
 html,
@@ -61,7 +61,8 @@ body {
   background: var(--color-ground);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 14px;
+  color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -113,8 +114,16 @@ body {
 }
 
 *:focus-visible {
-  outline: 1px solid var(--color-agent);
-  outline-offset: 1px;
+  outline: 2px solid var(--color-agent);
+  outline-offset: 2px;
+}
+
+.control-hit {
+  min-height: 2rem;
+}
+
+.action-hit {
+  min-height: 2.5rem;
 }
 
 ::-webkit-scrollbar {
@@ -131,6 +140,181 @@ body {
   background: #4a565b;
 }
 
-.recharts-surface:focus {
-  outline: none;
+.recharts-surface:focus-visible {
+  outline: 2px solid var(--color-agent);
+  outline-offset: -2px;
+}
+
+@media (pointer: coarse) {
+  .control-hit,
+  .service-button {
+    min-height: 2.75rem;
+  }
+
+  .action-hit {
+    min-height: 2.75rem;
+  }
+}
+
+/*
+  Below a three-column desktop viewport the decision rail moves below the
+  investigation workspace. No pane is hidden or clipped; the page becomes a
+  readable incident document while preserving the same shared state.
+*/
+@media (max-width: 1199px) {
+  .app-shell {
+    height: auto;
+    min-height: 100%;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+  }
+
+  .app-main {
+    display: grid;
+    grid-template-columns: 13rem minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .service-rail {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .center-stack {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .chart-pane {
+    height: auto;
+    min-height: 24rem;
+  }
+
+  .chart-pane .pane-header {
+    height: auto;
+    min-height: 3.75rem;
+    flex-wrap: wrap;
+    padding-block: 0.35rem;
+  }
+
+  .chart-pane .pane-header > div {
+    order: 3;
+    flex-basis: 100%;
+    overflow-x: auto;
+  }
+
+  .trace-pane {
+    height: auto;
+    min-height: 21rem;
+  }
+
+  .logs-pane {
+    min-height: 18rem;
+  }
+
+  .decision-rail {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    width: 100%;
+    min-height: 25rem;
+    grid-template-columns: 1.2fr 0.85fr 1fr;
+    border-top: 1px solid var(--color-line);
+    border-left: 0;
+  }
+
+  .decision-timeline,
+  .decision-report {
+    min-height: 25rem;
+    flex-basis: auto;
+  }
+
+  .activity-ticker {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+  }
+}
+
+@media (max-width: 720px) {
+  #root {
+    min-height: 100%;
+  }
+
+  .app-header {
+    align-items: flex-start;
+    gap: 0.625rem;
+  }
+
+  .app-main {
+    display: block;
+  }
+
+  .service-rail {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .service-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .service-list > li:nth-child(odd) {
+    border-right: 1px solid var(--color-line);
+  }
+
+  .pane-header {
+    height: auto;
+    min-height: 2.5rem;
+    overflow: visible;
+  }
+
+  .pane-header > div {
+    overflow-x: auto;
+    padding-block: 0.25rem;
+  }
+
+  .chart-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .trace-body {
+    flex-direction: column;
+  }
+
+  .trace-detail {
+    width: 100%;
+    min-height: 12rem;
+    border-top: 1px solid var(--color-line);
+    border-left: 0;
+  }
+
+  .decision-rail {
+    display: block;
+    min-height: 0;
+  }
+
+  .decision-timeline,
+  .decision-report {
+    min-height: 20rem;
+  }
+
+  .activity-ticker {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 460px) {
+  .service-list {
+    grid-template-columns: 1fr;
+  }
+
+  .service-list > li:nth-child(odd) {
+    border-right: 0;
+  }
 }

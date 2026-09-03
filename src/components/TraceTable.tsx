@@ -25,8 +25,8 @@ export function TraceTable() {
     <Pane
       id="traces"
       title="Traces"
-      className="h-[30%] shrink-0 border-b border-line"
-      bodyClassName="flex min-h-0"
+      className="trace-pane h-[30%] shrink-0 border-b border-line"
+      bodyClassName="trace-body flex min-h-0"
       controls={
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-1.5 text-2xs text-ink-faint">
@@ -37,7 +37,7 @@ export function TraceTable() {
               step={100}
               value={minLatency}
               onChange={(e) => setTraceFilter({ minLatencyMs: Math.max(0, Number(e.target.value) || 0) }, 'human')}
-              className="w-16 border border-line bg-ground px-1 py-0.5 font-mono text-2xs tnum text-ink"
+              className="control-hit w-16 border border-line bg-ground px-1.5 font-mono text-2xs tnum text-ink"
             />
             ms
           </label>
@@ -55,7 +55,7 @@ export function TraceTable() {
       ) : (
         <>
           <div className="min-w-0 flex-1 overflow-y-auto">
-            <table className="w-full border-collapse">
+            <table className="min-w-[34rem] w-full border-collapse">
               <thead className="sticky top-0 bg-pane">
                 <tr className="border-b border-line text-left text-2xs text-ink-faint">
                   <th className="px-3 py-1 font-normal">trace</th>
@@ -100,14 +100,14 @@ export function TraceTable() {
             </table>
           </div>
 
-          <aside className="w-72 shrink-0 overflow-y-auto border-l border-line px-3 py-2">
+          <aside className="trace-detail w-72 shrink-0 overflow-y-auto border-l border-line px-3 py-2.5">
             {selected ? (
               <>
                 <div className="mb-2 flex items-baseline justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => selectTrace(null, 'human')}
-                    className="font-mono text-2xs text-ink-dim hover:text-ink"
+                    className="control-hit font-mono text-2xs text-ink-dim hover:text-ink"
                     title="Back to the aggregate across all matching traces"
                   >
                     ← {selected.id.slice(3)}

@@ -27,10 +27,10 @@ export function ServiceRail() {
       id="services"
       title="Services"
       compactStamp
-      className="w-52 shrink-0 border-r border-line"
+      className="service-rail w-52 shrink-0 border-r border-line"
       bodyClassName="overflow-y-auto"
     >
-      <ul>
+      <ul className="service-list">
         {health.map((h) => {
           const isSelected = h.service === selected;
           const value = metric === 'error_rate' ? h.error_rate_pct : metric === 'p50' ? h.p50_ms : h.p99_ms;
@@ -40,7 +40,8 @@ export function ServiceRail() {
                 type="button"
                 onClick={() => setService(h.service, 'human')}
                 aria-current={isSelected}
-                className={`flex w-full flex-col gap-1 border-b border-line px-3 py-2 text-left transition-colors ${
+                aria-label={`${h.service}, ${h.status}, ${metric} ${value}${METRIC_UNITS[metric]}, ${h.active_alerts} active alerts`}
+                className={`service-button flex w-full flex-col gap-1 border-b border-line px-3 py-2.5 text-left transition-colors ${
                   isSelected ? 'bg-raised' : 'hover:bg-raised/60'
                 }`}
               >
