@@ -355,7 +355,7 @@ const filterTraces = defineTool({
     const s = state();
     s.setService(service, 'agent');
     s.setWindow(w, 'agent');
-    s.setTraceFilter({ minLatencyMs: minLatency, limit: Math.max(limit, 8) }, 'agent');
+    s.setTraceFilter({ minLatencyMs: minLatency, limit }, 'agent');
     s.selectTrace(matched[0].id, 'agent');
 
     const analysis = analyzeTraces(service, w, minLatency, limit);

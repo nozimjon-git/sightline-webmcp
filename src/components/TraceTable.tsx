@@ -10,7 +10,8 @@ export function TraceTable() {
   const service = useStore((s) => s.selectedService);
   const window = useStore((s) => s.window);
   const minLatency = useStore((s) => s.traceMinLatencyMs);
-  // The agent's exemplar limit; the table itself scrolls through every match.
+  // The exemplar count the agent asked for. The table itself scrolls through
+  // every match; this only sizes the exemplar list inside the analysis.
   const limit = useStore((s) => s.traceLimit);
   const selectedId = useStore((s) => s.selectedTraceId);
   const selectTrace = useStore((s) => s.selectTrace);
