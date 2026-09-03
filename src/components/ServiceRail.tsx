@@ -29,7 +29,7 @@ export function ServiceRail() {
   );
 
   return (
-    <aside className={`service-rail ${pulse.className}`} aria-label="Services">
+    <aside id="service-rail" className={`service-rail ${pulse.className}`} aria-label="Services">
       <div className="service-search-wrap">
         <MagnifyingGlass size={16} aria-hidden />
         <input

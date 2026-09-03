@@ -79,7 +79,7 @@ interface PaneProps {
 export function Pane({ id, title, controls, children, className = '', bodyClassName = '', compactStamp }: PaneProps) {
   const flash = useTouchFlash(id);
   return (
-    <section className={`relative flex min-h-0 min-w-0 flex-col bg-pane ${className}`}>
+    <section id={`pane-${id}`} data-pane={id} className={`relative flex min-h-0 min-w-0 flex-col bg-pane ${className}`}>
       <header className="pane-header">
         <h2 className="shrink-0 truncate text-xs font-medium tracking-[0.03em] whitespace-nowrap text-ink">{title}</h2>
         <div className="pane-controls flex items-center gap-2">{controls}</div>

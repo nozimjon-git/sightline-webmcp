@@ -1,4 +1,5 @@
-import { Robot, User } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Check, Copy, Robot, User } from '@phosphor-icons/react';
+import { useState } from 'react';
 import { useStore, type Severity } from '../store';
 import { Pane } from './Pane';
 
@@ -9,15 +10,43 @@ function SeverityMark({ severity }: { severity: Severity }) {
   return <span className="mt-1 h-2 w-2 shrink-0 border border-line-strong" aria-hidden />;
 }
 
+const JUDGE_PROMPT = 'Checkout p99 is spiking. Investigate the root cause, pin each evidence-backed finding, propose the safest mitigation for my approval, and draft the incident report.';
+
+const SOURCE_TARGETS: Record<string, { label: string; id: string }> = {
+  get_service_health: { label: 'service health', id: 'service-rail' },
+  query_metrics: { label: 'metrics', id: 'pane-chart' },
+  filter_traces: { label: 'traces', id: 'pane-traces' },
+  search_logs: { label: 'logs', id: 'pane-logs' },
+  correlate_with_deploys: { label: 'deploy correlation', id: 'pane-chart' },
+};
+
 export function IncidentTimeline() {
+  const [copied, setCopied] = useState(false);
   const mcp = useStore((state) => state.mcp);
   const findings = useStore((s) => s.findings);
   const removeFinding = useStore((s) => s.removeFinding);
+  const resetIncident = useStore((s) => s.resetIncident);
   const sorted = [...findings].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   const toolLine =
     mcp.state === 'connected'
       ? `WebMCP · ${mcp.toolCount} registered tools · shared live state`
       : 'No WebMCP host detected · this console is fully usable by hand';
+
+  const copyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(JUDGE_PROMPT);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const jumpToSource = (source: string) => {
+    const target = SOURCE_TARGETS[source];
+    if (!target) return;
+    document.getElementById(target.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   return (
     <Pane
@@ -38,7 +67,17 @@ export function IncidentTimeline() {
           <Robot size={20} weight="fill" aria-hidden />
           <div>
             <strong>Ready to investigate this incident</strong>
-            <p>Ask your agent to trace the p99 spike. Whatever it pins lands here, stamped with who pinned it and when.</p>
+            <p>Give your agent one prompt. Its evidence, tool trail, and action request will appear here while you stay in control.</p>
+            <div className="judge-actions">
+              <button type="button" className="copy-investigation-prompt" onClick={copyPrompt}>
+                {copied ? <Check size={15} weight="bold" /> : <Copy size={15} />}
+                {copied ? 'Prompt copied' : 'Copy investigation prompt'}
+              </button>
+              <button type="button" className="reset-demo" onClick={() => resetIncident()}>
+                <ArrowCounterClockwise size={15} />
+                Reset demo
+              </button>
+            </div>
             <span>{toolLine}</span>
           </div>
         </div>
@@ -72,7 +111,17 @@ export function IncidentTimeline() {
                       {f.pinnedBy === 'agent' ? 'pinned by the agent' : 'pinned by you'}
                     </span>
                     <span>· {f.severity}</span>
+                    {f.confidence !== undefined && <span>· {Math.round(f.confidence * 100)}% confidence</span>}
                   </p>
+                  {!!f.sourceRefs?.length && (
+                    <div className="finding-sources" aria-label="Finding evidence sources">
+                      {f.sourceRefs.map((source) => (
+                        <button key={source} type="button" onClick={() => jumpToSource(source)}>
+                          {SOURCE_TARGETS[source]?.label ?? source}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </li>

@@ -1,6 +1,8 @@
-import { ArrowRight, CheckCircle, LockKey, Robot, XCircle } from '@phosphor-icons/react';
+import { ArrowRight, CheckCircle, LockKey, Robot, WarningCircle, XCircle } from '@phosphor-icons/react';
 import { DEPLOYS, clock } from '../data/incident';
+import { rollbackChecks } from '../lib/analysis';
 import { useStore } from '../store';
+import { CausalChain } from './CausalChain';
 import { DeployDiff } from './DeployDiff';
 import { useTouchFlash } from './Pane';
 
@@ -10,7 +12,7 @@ import { useTouchFlash } from './Pane';
  * `propose_rollback` writes a proposal and returns
  * `{ status: "awaiting_human_approval" }`. It changes nothing else. The only
  * function in the codebase that applies a rollback is `store.approveRollback`,
- * and its only caller is the onClick handler at the bottom of this file. There
+ * and its only caller is the onClick handler in `ApprovalFooter` below. There
  * is no tool that reaches it, and no code path from an agent to it. An agent
  * can ask; a person decides.
  *
@@ -22,8 +24,6 @@ import { useTouchFlash } from './Pane';
 export function RollbackCard() {
   const pending = useStore((state) => state.pendingRollback);
   const applied = useStore((state) => state.appliedRollback);
-  const approveRollback = useStore((state) => state.approveRollback);
-  const rejectRollback = useStore((state) => state.rejectRollback);
   const flash = useTouchFlash('rollback');
 
   // Order matters: a fresh proposal outranks an already-decided one, otherwise
@@ -91,6 +91,8 @@ export function RollbackCard() {
         </div>
       </div>
 
+      {deploy && <CausalChain deploy={deploy} />}
+
       {deploy && (
         <>
           <div className="version-change" aria-label="Version change">
@@ -114,13 +116,51 @@ export function RollbackCard() {
             </ul>
           </div>
 
-          <DeployDiff lines={deploy.diff} label={`${deploy.id} · ${deploy.service} ${deploy.version}`} />
+          <div id="deploy-diff">
+            <DeployDiff lines={deploy.diff} label={`${deploy.id} · ${deploy.service} ${deploy.version}`} />
+          </div>
         </>
       )}
+    </section>
+  );
+}
+
+/**
+ * The gate itself, pinned to the bottom of the decision rail.
+ *
+ * Evidence is long and the decision is short, so the decision does not scroll.
+ * The pre-flight checks sit directly above the buttons because they are the
+ * last thing read before the click — and each one is computed in
+ * `rollbackChecks`, never asserted.
+ */
+export function ApprovalFooter() {
+  const pending = useStore((state) => state.pendingRollback);
+  const approveRollback = useStore((state) => state.approveRollback);
+  const rejectRollback = useStore((state) => state.rejectRollback);
+  if (!pending) return null;
+
+  const deploy = DEPLOYS.find((item) => item.id === pending.deployId);
+  const checks = deploy ? rollbackChecks(deploy) : [];
+
+  return (
+    <div className="approval-footer">
+      <ul className="safety-grid" aria-label="Rollback pre-flight checks">
+        {checks.map((check) => (
+          <li key={check.label} className={check.clear ? '' : 'needs-attention'}>
+            {check.clear ? (
+              <CheckCircle size={13} weight="fill" aria-hidden />
+            ) : (
+              <WarningCircle size={13} weight="fill" aria-hidden />
+            )}
+            <span>{check.label}</span>
+            <strong>{check.detail}</strong>
+          </li>
+        ))}
+      </ul>
 
       <div className="approval-gate">
         <span>
-          <LockKey size={16} weight="fill" /> Human approval required
+          <LockKey size={15} weight="fill" /> Human approval required
         </span>
         {/* The one and only path from a proposal to an applied rollback. */}
         <button type="button" className="approve-button" onClick={approveRollback}>
@@ -130,6 +170,6 @@ export function RollbackCard() {
           Decline proposal
         </button>
       </div>
-    </section>
+    </div>
   );
 }

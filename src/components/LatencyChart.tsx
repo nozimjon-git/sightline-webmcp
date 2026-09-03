@@ -34,7 +34,7 @@ const PRESETS: { label: string; value: string }[] = [
   { label: 'all', value: 'full_incident' },
 ];
 
-const COLOR = { normal: '#99a3ba', alert: '#e8a13c', agent: '#4fc3d9', line: '#232a3a', faint: '#6b768d' };
+const COLOR = { normal: '#99a3ba', alert: '#e8a13c', agent: '#4fc3d9', line: '#232a3a', faint: '#838da2' };
 
 interface Row {
   t: string;
@@ -173,7 +173,7 @@ export function LatencyChart() {
             <CartesianGrid stroke={COLOR.line} strokeDasharray="0" vertical={false} />
             <XAxis
               dataKey="t"
-              tick={{ fill: COLOR.faint, fontSize: 10, fontFamily: 'IBM Plex Mono' }}
+              tick={{ fill: COLOR.faint, fontSize: 11, fontFamily: 'JetBrains Mono' }}
               tickLine={false}
               axisLine={{ stroke: COLOR.line }}
               minTickGap={44}
@@ -181,7 +181,7 @@ export function LatencyChart() {
             />
             <YAxis
               width={54}
-              tick={{ fill: COLOR.faint, fontSize: 10, fontFamily: 'IBM Plex Mono' }}
+              tick={{ fill: COLOR.faint, fontSize: 11, fontFamily: 'JetBrains Mono' }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => `${v}${unit}`}
@@ -201,8 +201,8 @@ export function LatencyChart() {
                     value: isMarked ? `${d.id} ${d.version}` : d.version,
                     position: 'insideTopLeft',
                     fill: isMarked ? COLOR.agent : COLOR.faint,
-                    fontSize: 9,
-                    fontFamily: 'IBM Plex Mono',
+                    fontSize: 11,
+                    fontFamily: 'JetBrains Mono',
                   }}
                 />
               );
@@ -217,8 +217,8 @@ export function LatencyChart() {
                   value: 'rollback',
                   position: 'insideBottomRight',
                   fill: COLOR.agent,
-                  fontSize: 9,
-                  fontFamily: 'IBM Plex Mono',
+                  fontSize: 11,
+                  fontFamily: 'JetBrains Mono',
                 }}
               />
             )}

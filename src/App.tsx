@@ -18,8 +18,18 @@ export default function App() {
   const { helpOpen, closeHelp } = useShortcuts();
 
   useEffect(() => {
-    if (registrationStarted) return;
-    registrationStarted = true;
+    const connect = () => {
+      if (registrationStarted) return;
+      registrationStarted = true;
+      setMcp({ state: 'checking', api: '', toolCount: 0, message: 'Discovering the WebMCP host…' });
+      void registerTools(TOOLS).then((report) => {
+        setMcp({ state: report.state, api: report.api, toolCount: report.toolCount, message: report.message });
+        if (report.state !== 'connected') registrationStarted = false;
+      });
+    };
+
+    const retry = () => connect();
+    window.addEventListener('sightline:retry-mcp', retry);
 
     // A console handle so a human (or a judge with devtools open) can exercise
     // any tool by hand, with or without a WebMCP host present:
@@ -36,9 +46,8 @@ export default function App() {
       },
     });
 
-    void registerTools(TOOLS).then((report) =>
-      setMcp({ state: report.state, api: report.api, toolCount: report.toolCount, message: report.message }),
-    );
+    connect();
+    return () => window.removeEventListener('sightline:retry-mcp', retry);
   }, [setMcp]);
 
   return (

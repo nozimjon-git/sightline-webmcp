@@ -1,7 +1,8 @@
-import { Check, Copy, DotsThree, Pulse, ShareNetwork } from '@phosphor-icons/react';
+import { ArrowsClockwise, Check, Copy, DotsThree, LinkSimple, Pulse, ShareNetwork } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { clock } from '../data/incident';
 import { incidentMeta, nowIso, useStore } from '../store';
+import { useTouchFlash } from './Pane';
 
 function McpBadge() {
   const mcp = useStore((state) => state.mcp);
@@ -12,11 +13,53 @@ function McpBadge() {
       ? 'Connecting…'
       : 'Human-only mode';
 
-  return (
-    <div className="mcp-status" title={mcp.message ?? mcp.api} role="status" aria-live="polite">
+  const retry = () => window.dispatchEvent(new Event('sightline:retry-mcp'));
+  const content = (
+    <>
       <span className={`mcp-dot ${connected ? 'is-connected' : ''}`} aria-hidden />
       <span>WebMCP</span>
       <span className="mcp-detail">{label}</span>
+      {!connected && mcp.state !== 'checking' && <ArrowsClockwise size={13} aria-hidden />}
+    </>
+  );
+
+  return connected || mcp.state === 'checking' ? (
+    <div className="mcp-status" title={mcp.message ?? mcp.api} role="status" aria-live="polite">{content}</div>
+  ) : (
+    <button
+      type="button"
+      className="mcp-status mcp-retry"
+      title={`${mcp.message ?? 'No WebMCP host detected.'} Activate WebMCP in the ChatGPT in-app browser or Chrome, then retry.`}
+      onClick={retry}
+      aria-label="Retry WebMCP connection"
+    >
+      {content}
+    </button>
+  );
+}
+
+function HandoffBadge() {
+  const provenance = useStore((state) => state.provenance.handoff);
+  const service = useStore((state) => state.selectedService);
+  const metric = useStore((state) => state.metric);
+  const window = useStore((state) => state.window);
+  const flash = useTouchFlash('handoff');
+  const performedAt = provenance
+    ? new Date(provenance.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : null;
+
+  return (
+    <div
+      className={`handoff-status ${provenance ? 'is-synced' : ''} ${flash.className}`}
+      title={provenance
+        ? `Agent read ${service} · ${metric} · ${window.label}. Performed at ${performedAt}.`
+        : `Shared view ready: ${service} · ${metric} · ${window.label}`}
+      role="status"
+      aria-live="polite"
+    >
+      <LinkSimple size={14} weight={provenance ? 'bold' : 'regular'} aria-hidden />
+      <span>{provenance ? `Agent synced ${metric}` : 'Shared view ready'}</span>
+      {performedAt && <time>{performedAt}</time>}
     </div>
   );
 }
@@ -63,6 +106,7 @@ export function Header() {
       </div>
 
       <div className="header-actions">
+        <HandoffBadge />
         <McpBadge />
         <button type="button" className="header-action" onClick={share} aria-label="Copy incident link">
           {copied ? <Check size={16} weight="bold" /> : <ShareNetwork size={16} />}
