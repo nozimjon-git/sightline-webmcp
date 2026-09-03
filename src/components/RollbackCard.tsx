@@ -1,4 +1,5 @@
 import { DEPLOYS, clock } from '../data/incident';
+import { DeployDiff } from './DeployDiff';
 import { useStore } from '../store';
 import { Pane } from './Pane';
 
@@ -71,11 +72,7 @@ export function RollbackCard() {
 
         <p className="mt-1.5 text-2xs leading-relaxed text-ink-dim">{pending!.reason}</p>
 
-        {deploy && (
-          <p className="mt-1.5 border-l border-line pl-2 font-mono text-2xs leading-relaxed text-ink-faint">
-            {deploy.diffNote}
-          </p>
-        )}
+        {deploy && <DeployDiff lines={deploy.diff} label={`${deploy.id} · ${deploy.service} ${deploy.version}`} />}
 
         <div className="mt-2.5 flex items-center gap-2">
           {/* The one and only path from a proposal to an applied rollback. */}

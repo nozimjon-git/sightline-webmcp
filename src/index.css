@@ -28,6 +28,12 @@
   --color-alert: #e2724e;
   --color-alert-deep: #7e3826;
   --color-agent: #8fb3c4;
+  /* Diff notation only. Not a second accent: red and green are the language a
+     unified diff is written in, and rendering one in any other palette makes it
+     harder to read to prove a point about restraint. */
+  --color-add: #7fa88a;
+  --color-add-wash: #1d2622;
+  --color-alert-wash: #2a1d19;
   --color-agent-deep: #33505c;
 
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;

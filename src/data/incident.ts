@@ -302,6 +302,13 @@ export interface Deploy {
   changes: string[];
   /** The line that matters. Written the way a real deploy annotation reads. */
   diffNote: string;
+  /**
+   * The actual config hunk, as unified diff lines. Real deploy annotations
+   * carry these, and a human reading `-  maximumPoolSize: 50` next to
+   * `+  maximumPoolSize: 10` understands the incident faster than any prose
+   * summary of it will make them.
+   */
+  diff: string[];
 }
 
 export const DEPLOYS: Deploy[] = [
@@ -313,6 +320,16 @@ export const DEPLOYS: Deploy[] = [
     author: 'team-catalog',
     changes: ['Raise stock-lookup cache TTL 30s -> 300s', 'Drop unused /v1/stock/legacy route'],
     diffNote: 'config/cache.yml: stockTtlSeconds 30 -> 300. Cold-cache window expected on rollout.',
+    diff: [
+      '--- a/config/cache.yml',
+      '+++ b/config/cache.yml',
+      '@@ -4,7 +4,7 @@ stock:',
+      '   lookup:',
+      '     provider: redis',
+      '-    stockTtlSeconds: 30',
+      '+    stockTtlSeconds: 300',
+      '     maxBatchSize: 64',
+    ],
   },
   {
     id: 'dep-1104',
@@ -328,6 +345,19 @@ export const DEPLOYS: Deploy[] = [
     diffNote:
       'config/datasource.yml: hikari.maximumPoolSize 50 -> 10 (copied from the staging profile). ' +
       'hikari.connectionTimeout left at 30000ms.',
+    diff: [
+      '--- a/config/datasource.yml',
+      '+++ b/config/datasource.yml',
+      '@@ -11,9 +11,9 @@ datasource:',
+      '   hikari:',
+      '     poolName: HikariPool-1',
+      '-    maximumPoolSize: 50',
+      '-    minimumIdle: 10',
+      '+    maximumPoolSize: 10',
+      '+    minimumIdle: 2',
+      '     connectionTimeout: 30000',
+      '     idleTimeout: 600000',
+    ],
   },
   {
     id: 'dep-1112',
@@ -337,6 +367,14 @@ export const DEPLOYS: Deploy[] = [
     author: 'team-identity',
     changes: ['Add GET /v2/profile', 'Bump jackson 2.17.1 -> 2.17.2'],
     diffNote: 'Additive endpoint. No datasource or pool changes.',
+    diff: [
+      '--- a/src/routes/index.ts',
+      '+++ b/src/routes/index.ts',
+      '@@ -22,6 +22,7 @@ export function register(app: App) {',
+      "   app.get('/v1/profile', getProfile);",
+      "+  app.get('/v2/profile', getProfileV2);",
+      "   app.post('/v1/session', createSession);",
+    ],
   },
 ];
 

@@ -438,6 +438,8 @@ export interface DeployCorrelation {
   in_window: boolean;
   changes: string[];
   diff_note: string;
+  /** Unified diff of the config hunk; the defect is usually visible in it. */
+  diff: string[];
   rolled_back: boolean;
 }
 
@@ -523,6 +525,7 @@ export function correlateDeploys(
       in_window: inWindow(d.at, w),
       changes: d.changes,
       diff_note: d.diffNote,
+      diff: d.diff,
       rolled_back: rolledBackIds.includes(d.id),
     }))
     .sort((a, b) => b.proximity_score - a.proximity_score);
