@@ -14,7 +14,9 @@ registers nine tools; when the agent calls one, the console visibly changes, and
 the agent can read back what the *human* is looking at and continue from there.
 
 Prompt it with one sentence — **"Checkout p99 is spiking. Find out why."** — and
-it should reach the deploy on its own.
+it should reach the deploy on its own. The findings pane carries a **Copy
+investigation prompt** button and a **Reset demo** action, so you can run the
+whole thing without reading any of this first.
 
 ---
 
@@ -107,6 +109,17 @@ only caller is the `onClick` of the Approve button in
 [`RollbackCard.tsx`](src/components/RollbackCard.tsx). No tool reaches it.
 Requested windows are bounded by the current simulated time, so recovery data
 is unavailable until that approval advances the incident clock.
+
+The gate is pinned to the foot of the decision rail so evidence never pushes it
+off screen, and the pre-flight checks above it — restore target, later deploys,
+migrations in the diff — are computed in `rollbackChecks` from the deploy
+fixture. An approval gate that displays reassuring constants is worse than one
+that displays nothing: it teaches the operator to trust a check that never ran.
+
+**The rollback argument is a chain, not a paragraph.** `v2.14 shipped` →
+`maximumPoolSize 50 → 10` → `96.2% in db.connection.acquire` → `p99 x19.3`,
+where every value is computed and every step scrolls to the chart, trace or
+diff it came from.
 
 **Errors teach the caller how to retry.** Not `"No results"` but
 `"No traces for checkout-service at or above 3000ms in 13:30-14:00. The slowest
@@ -228,7 +241,7 @@ irreversible action in the application, and it stays a click on a button that
 only exists while a proposal is open — a stray keystroke should never be able to
 ship a production change.
 
-## Interface and accessibility
+## The handoff, made visible
 
 Every pane carries a provenance stamp in its header naming who last changed it
 and how — `agent · filter_traces · 14:47:20`, or `you · window 14:00-14:30`.
@@ -236,10 +249,44 @@ When a tool mutates a pane, that pane gets one sharp flash in the colour of
 whoever caused it. That is the only motion in the application, and it respects
 `prefers-reduced-motion`.
 
-The workspace reflows below desktop width instead of clipping. Chart windows
-can be changed with keyboard-accessible time inputs as well as drag handles,
-tool activity and approval requests use live regions, controls receive visible
-focus, and the muted palette meets normal-text contrast targets.
+The header carries the other half: when the agent calls `get_current_view`, the
+**Agent synced** badge names the metric it read and the second it read it. That
+is the moment the two operators are provably looking at the same screen.
+
+Findings pinned by the agent carry a confidence value and `source_refs`, and
+each ref renders as a button that scrolls to the pane the evidence came from —
+so a reviewer can reproduce a claim instead of taking its word for it. The
+activity trail, provenance stamps, findings and rollback state all survive a
+refresh, with wall-clock stamps kept distinct from incident time.
+
+## Manual versus agent-assisted
+
+The decision rail scores the same incident both ways. The agent column is
+measured live from the activity trail — elapsed time to the first critical
+finding, elapsed time to mitigation, tool calls made, and the breadth each
+sweep collapsed (`get_service_health` rules out four services in one call).
+The manual column is an estimate recorded in `MANUAL_BASELINE`, and the panel
+says so: those are different kinds of number and the interface should not print
+them as if both were observed.
+
+## Accessibility
+
+No operational text renders below 11px, and `--color-ink-faint` clears 4.5:1 on
+every surface it is used on. Chart windows can be changed with keyboard-
+accessible time inputs as well as drag handles, tool activity and approval
+requests use live regions, focus is a ring plus a halo so it survives a dark
+ground, and the tab order runs brand → header → services → evidence → decision.
+Verified with no clipped controls and no horizontal overflow at 1440, 1280,
+1180, 1024, 720 (200% zoom) and 390.
+
+Below 1120px the decision rail becomes a drawer behind a persistent **Decision
+required** trigger, so a proposal is one tap away rather than below a long
+investigation timeline. Parked off screen it is `visibility: hidden`, which
+keeps it out of the tab order.
+
+When no WebMCP host is present the activity band explains which surfaces were
+probed, whether the document is origin-keyed, how to enable WebMCP, and offers
+a retry — and the console stays fully usable by hand.
 
 ![Sightline tablet layout](docs/sightline-tablet.jpg)
 
