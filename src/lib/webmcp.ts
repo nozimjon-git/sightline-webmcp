@@ -97,8 +97,23 @@ const descriptorOf = (t: ToolDefinition) => ({
   execute: t.execute,
 });
 
+/**
+ * Tools registered by the last successful call, held so they can be withdrawn.
+ *
+ * The spec ties a tool's lifetime to an AbortSignal, and registering a name
+ * twice is an error. Without this, a Vite hot reload — which replaces the
+ * module holding the "already registered" flag — re-runs registration against
+ * a host that still has the previous nine tools, and every one is rejected: the
+ * console reports "host rejected registration" after any edit in dev. Aborting
+ * first makes registration idempotent, so a retry or a reload is always safe.
+ */
+let activeRegistration: AbortController | null = null;
+
 export async function registerTools(tools: ToolDefinition[]): Promise<RegistrationReport> {
   const found = findHost();
+
+  activeRegistration?.abort();
+  activeRegistration = null;
 
   if (!found) {
     const message =
@@ -112,14 +127,16 @@ export async function registerTools(tools: ToolDefinition[]): Promise<Registrati
   const { host, where } = found;
 
   if (typeof host.registerTool === 'function') {
+    const controller = new AbortController();
     const failures: string[] = [];
     for (const tool of tools) {
       try {
-        await host.registerTool(descriptorOf(tool));
+        await host.registerTool(descriptorOf(tool), { signal: controller.signal });
       } catch (err) {
         failures.push(`${tool.name}: ${(err as Error)?.message ?? String(err)}`);
       }
     }
+    if (failures.length < tools.length) activeRegistration = controller;
     if (failures.length === tools.length) {
       const message = `${where}.registerTool() rejected every tool${originIsolationHint()}. First error — ${failures[0]}`;
       console.error(`[sightline] ${message}`);

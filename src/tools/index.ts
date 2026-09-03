@@ -180,7 +180,23 @@ function defineTool(spec: ToolSpec): ToolDefinition {
     inputSchema: spec.inputSchema,
     annotations: { readOnlyHint: spec.readOnly, untrustedContentHint: spec.untrustedContent ?? false },
     execute: async (input, options) => {
-      const args = (input ?? {}) as Record<string, unknown>;
+      // Chrome parses the JSON string given to executeTool() and hands `execute`
+      // an object, which is what the IDL specifies. A host that forwarded the
+      // raw string instead would land here as a primitive, and every field
+      // would read as missing — so the caller would be told `Missing "service"`
+      // when the real fault was the envelope. Parse defensively so the error
+      // they get is at least the true one.
+      const decoded =
+        typeof input === 'string'
+          ? (() => {
+              try {
+                return JSON.parse(input) as unknown;
+              } catch {
+                return {};
+              }
+            })()
+          : input;
+      const args = (decoded && typeof decoded === 'object' ? decoded : {}) as Record<string, unknown>;
       try {
         if (options?.signal?.aborted) return fail(`${spec.name} was cancelled before it started.`);
         // Panes touched during this call stamp themselves with the tool name.

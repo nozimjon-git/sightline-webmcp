@@ -1572,6 +1572,17 @@ button:disabled {
   color: var(--color-alert);
 }
 
+/* A deploy to a service other than the one under investigation is context,
+   not the subject. Legible, but it does not compete. */
+.event-summary.is-other-service h3,
+.event-summary.is-other-service .event-context {
+  color: var(--color-ink-dim);
+}
+
+.event-summary.is-other-service {
+  opacity: .78;
+}
+
 .trace-expand {
   display: flex;
   width: 100%;

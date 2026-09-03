@@ -181,10 +181,14 @@ tools.length                                  // 9
 tools.map(t => t.name)
 
 const qm = tools.find(t => t.name === 'query_metrics');
-// Chrome's executeTool takes the arguments as a JSON *string*, not an object.
-await document.modelContext.executeTool(qm, JSON.stringify({
+// Two shapes to know, both learned from Chrome rather than from the IDL:
+// executeTool takes the arguments as a JSON *string* and rejects a plain object
+// with "Failed to parse input arguments" — and it resolves to a *string*, not
+// the ToolResult, so parse it before reaching for `.content`.
+const raw = await document.modelContext.executeTool(qm, JSON.stringify({
   service: 'checkout-service', metric: 'p99', window: 'full_incident',
 }));
+JSON.parse(raw).content[0].text;
 ```
 
 Two things that are easy to miss and worth seeing for yourself: a tool error

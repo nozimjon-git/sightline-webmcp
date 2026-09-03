@@ -9,9 +9,9 @@ import {
   X,
 } from '@phosphor-icons/react';
 import { useState, type ReactNode } from 'react';
-import { DEPLOYS, INCIDENT_DATE, clock } from '../data/incident';
+import { DEPLOYS, INCIDENT_DATE, clock, type Deploy } from '../data/incident';
 import { detectAnomalyStart, matchLogs, matchTraces, pointsIn } from '../lib/analysis';
-import { parseWindow } from '../lib/time';
+import { inWindow, parseWindow } from '../lib/time';
 import { extraLogs, nowIso, useStore } from '../store';
 import { IncidentTimeline } from './IncidentTimeline';
 import { LatencyChart } from './LatencyChart';
@@ -52,13 +52,28 @@ function TimelineEvent({
   );
 }
 
-function DeploymentEvent() {
-  const deploy = DEPLOYS.find((item) => item.id === 'dep-1104')!;
+/**
+ * One deploy that landed inside the visible window.
+ *
+ * Every deploy in the window is shown, not only the one that turned out to be
+ * the culprit. Three releases ship during this incident and two of them are
+ * innocent; a timeline that quietly hides them is not evidence, it is the
+ * answer key. Deploys to a service other than the selected one stay legible but
+ * recede, because they are context rather than the thing under investigation.
+ */
+function DeploymentEvent({ deploy, focused }: { deploy: Deploy; focused: boolean }) {
   const marked = useStore((state) => state.markedDeployIds.includes(deploy.id));
+  const markedIds = useStore((state) => state.markedDeployIds);
   const markDeploys = useStore((state) => state.markDeploys);
 
+  const toggle = () =>
+    markDeploys(
+      marked ? markedIds.filter((id) => id !== deploy.id) : [...markedIds, deploy.id],
+      'human',
+    );
+
   return (
-    <article className="event-summary">
+    <article className={`event-summary ${focused ? '' : 'is-other-service'}`}>
       <div className="event-summary-main">
         <div className="event-title-row">
           <h3>Deployment</h3>
@@ -71,8 +86,9 @@ function DeploymentEvent() {
       <button
         type="button"
         className={`quiet-button ${marked ? 'is-active' : ''}`}
-        onClick={() => markDeploys(marked ? [] : [deploy.id], 'human')}
+        onClick={toggle}
         aria-pressed={marked}
+        aria-label={`${marked ? 'Unmark' : 'Mark'} ${deploy.id} on the chart`}
       >
         {marked ? <CheckCircle size={16} weight="fill" /> : <ChartLineUp size={16} />}
         {marked ? 'Marked on chart' : 'Mark on chart'}
@@ -96,8 +112,9 @@ export function InvestigationWorkspace() {
   const findings = useStore((state) => state.findings);
   const applied = useStore((state) => state.appliedRollback);
 
-  const deploy = DEPLOYS.find((item) => item.id === 'dep-1104')!;
-  const deployInWindow = deploy.at >= timeWindow.startIso && deploy.at <= timeWindow.endIso;
+  const deploysInWindow = DEPLOYS.filter((item) => inWindow(item.at, timeWindow)).sort((a, b) =>
+    a.at.localeCompare(b.at),
+  );
 
   // Each stamp is read out of the evidence sitting next to it, so the rail
   // re-times itself whenever the window or a filter changes.
@@ -199,11 +216,16 @@ export function InvestigationWorkspace() {
 
           {view === 'timeline' && (
             <>
-              {deployInWindow && (
-                <TimelineEvent time={clock(deploy.at)} icon={<RocketLaunch size={16} weight="fill" />} tone="agent">
-                  <DeploymentEvent />
+              {deploysInWindow.map((item) => (
+                <TimelineEvent
+                  key={item.id}
+                  time={clock(item.at)}
+                  icon={<RocketLaunch size={16} weight="fill" />}
+                  tone={item.service === service ? 'agent' : 'neutral'}
+                >
+                  <DeploymentEvent deploy={item} focused={item.service === service} />
                 </TimelineEvent>
-              )}
+              ))}
 
               <TimelineEvent
                 time={findings[0]?.timestamp ?? null}
