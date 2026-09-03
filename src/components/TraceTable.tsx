@@ -70,7 +70,15 @@ export function TraceTable() {
                   return (
                     <tr
                       key={t.id}
+                      tabIndex={0}
+                      aria-selected={isSel}
                       onClick={() => selectTrace(t.id, 'human')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          selectTrace(t.id, 'human');
+                        }
+                      }}
                       className={`cursor-pointer border-b border-line/60 ${isSel ? 'bg-raised' : 'hover:bg-raised/50'}`}
                     >
                       <td className="px-3 py-1 font-mono text-2xs text-ink-dim">

@@ -684,7 +684,6 @@ const draftIncidentReport = defineTool({
       appliedRollback: s.appliedRollback,
     });
     s.setReport(report);
-    s.logActivity({ actor: 'agent', label: 'draft_incident_report', detail: `${report.findingCount} findings`, ok: true });
 
     return ok(
       `Drafted ${report.incidentId} postmortem from ${report.findingCount} finding(s); ${report.sections.length} sections now in the right-hand pane.`,

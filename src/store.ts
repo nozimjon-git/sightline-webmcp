@@ -291,7 +291,12 @@ export const useStore = create<AppState>((set, get) => ({
     const pending: PendingRollback = { ...proposal, proposedAt: new Date().toISOString(), status: 'awaiting_human_approval' };
     // Note what is NOT happening here: no state that describes the *system*
     // changes. The proposal is a request for a human decision, nothing more.
-    set({ pendingRollback: pending });
+    set((s) => ({
+      pendingRollback: pending,
+      // A dismissed decision is history once a new proposal arrives; an
+      // approved one is not, and propose_rollback refuses to re-propose it.
+      appliedRollback: s.appliedRollback?.decision === 'rejected' ? null : s.appliedRollback,
+    }));
     get().touch('rollback', 'agent', `proposed ${proposal.deployId}`);
     return pending;
   },

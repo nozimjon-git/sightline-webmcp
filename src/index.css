@@ -48,6 +48,15 @@ body,
 }
 
 body {
+  overflow: auto;
+}
+
+/* A short host viewport should scroll, not crush the panes to nothing. */
+#root {
+  min-height: 620px;
+}
+
+body {
   margin: 0;
   background: var(--color-ground);
   color: var(--color-ink);

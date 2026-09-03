@@ -30,7 +30,9 @@ export function RollbackCard() {
     );
   }
 
-  if (applied) {
+  // Order matters: a fresh proposal outranks an already-decided one, otherwise
+  // a rollback proposed after a dismissal would never reach the screen.
+  if (applied && !pending) {
     const deploy = DEPLOYS.find((d) => d.id === applied.deployId);
     const ok = applied.decision === 'approved';
     return (
