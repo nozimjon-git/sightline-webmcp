@@ -4,3 +4,6 @@ dist
 *.local
 *.tsbuildinfo
 .netlify
+
+# Build brief, kept locally and out of the public history.
+SPEC.md
