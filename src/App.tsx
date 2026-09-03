@@ -1,14 +1,10 @@
 import { useEffect } from 'react';
 import { ActivityTicker } from './components/ActivityTicker';
 import { Header } from './components/Header';
-import { IncidentTimeline } from './components/IncidentTimeline';
-import { LatencyChart } from './components/LatencyChart';
-import { LogStream } from './components/LogStream';
-import { ReportCard } from './components/ReportCard';
-import { RollbackCard } from './components/RollbackCard';
+import { DecisionRail } from './components/DecisionRail';
+import { InvestigationWorkspace } from './components/InvestigationWorkspace';
 import { ServiceRail } from './components/ServiceRail';
 import { ShortcutsOverlay, useShortcuts } from './components/Shortcuts';
-import { TraceTable } from './components/TraceTable';
 import { registerTools } from './lib/webmcp';
 import { TOOLS, TOOL_BY_NAME } from './tools';
 import { useStore } from './store';
@@ -50,18 +46,14 @@ export default function App() {
       <Header />
       <main className="app-main flex min-h-0 flex-1">
         <ServiceRail />
-        <div className="center-stack flex min-h-0 min-w-0 flex-1 flex-col">
-          <LatencyChart />
-          <TraceTable />
-          <LogStream />
+        <div className="workspace-stack flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="workspace-body flex min-h-0 min-w-0 flex-1">
+            <InvestigationWorkspace />
+            <DecisionRail />
+          </div>
+          <ActivityTicker />
         </div>
-        <aside className="decision-rail flex w-[26rem] min-h-0 shrink-0 flex-col border-l border-line" aria-label="Incident decisions and report">
-          <IncidentTimeline />
-          <RollbackCard />
-          <ReportCard />
-        </aside>
       </main>
-      <ActivityTicker />
       <ShortcutsOverlay open={helpOpen} onClose={closeHelp} />
     </div>
   );

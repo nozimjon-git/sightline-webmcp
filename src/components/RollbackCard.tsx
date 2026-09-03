@@ -1,7 +1,8 @@
+import { ArrowRight, CheckCircle, LockKey, Robot, XCircle } from '@phosphor-icons/react';
 import { DEPLOYS, clock } from '../data/incident';
-import { DeployDiff } from './DeployDiff';
 import { useStore } from '../store';
-import { Pane } from './Pane';
+import { DeployDiff } from './DeployDiff';
+import { useTouchFlash } from './Pane';
 
 /**
  * The approval gate.
@@ -9,90 +10,126 @@ import { Pane } from './Pane';
  * `propose_rollback` writes a proposal and returns
  * `{ status: "awaiting_human_approval" }`. It changes nothing else. The only
  * function in the codebase that applies a rollback is `store.approveRollback`,
- * and its only caller is the onClick handler below. There is no tool that
- * reaches it, and no code path from an agent to it. An agent can ask; a person
- * decides.
+ * and its only caller is the onClick handler at the bottom of this file. There
+ * is no tool that reaches it, and no code path from an agent to it. An agent
+ * can ask; a person decides.
+ *
+ * Everything shown on this card is read out of the deploy fixture — the
+ * version it rolls back to, the change list, the diff. Nothing here is a
+ * reassuring label with no computation behind it: an approval gate is the last
+ * place in an interface that should claim something it has not checked.
  */
 export function RollbackCard() {
-  const pending = useStore((s) => s.pendingRollback);
-  const applied = useStore((s) => s.appliedRollback);
-  const approveRollback = useStore((s) => s.approveRollback);
-  const rejectRollback = useStore((s) => s.rejectRollback);
-
-  if (!pending && !applied) {
-    return (
-      <Pane id="rollback" title="Mitigation" className="shrink-0 border-b border-line">
-        <p className="px-3 py-2 text-2xs leading-relaxed text-ink-faint">
-          No mitigation proposed. When your agent calls{' '}
-          <span className="font-mono text-ink-dim">propose_rollback</span>, the request lands here and waits for your
-          click. Nothing ships until you approve it.
-        </p>
-      </Pane>
-    );
-  }
+  const pending = useStore((state) => state.pendingRollback);
+  const applied = useStore((state) => state.appliedRollback);
+  const approveRollback = useStore((state) => state.approveRollback);
+  const rejectRollback = useStore((state) => state.rejectRollback);
+  const flash = useTouchFlash('rollback');
 
   // Order matters: a fresh proposal outranks an already-decided one, otherwise
   // a rollback proposed after a dismissal would never reach the screen.
   if (applied && !pending) {
-    const deploy = DEPLOYS.find((d) => d.id === applied.deployId);
-    const ok = applied.decision === 'approved';
+    const deploy = DEPLOYS.find((item) => item.id === applied.deployId);
+    const approved = applied.decision === 'approved';
     return (
-      <Pane id="rollback" title="Mitigation" className="shrink-0 border-b border-line">
-        <div className="px-3 py-2.5" role="status" aria-live="polite">
-          <div className="flex items-baseline gap-2">
-            <span className={`h-2 w-2 shrink-0 ${ok ? 'bg-agent' : 'border border-line-strong'}`} aria-hidden />
-            <span className="text-xs text-ink">
-              {ok ? 'Rollback applied' : 'Rollback dismissed'} — {applied.deployId}
-            </span>
-          </div>
-          <p className="mt-1 pl-4 font-mono text-2xs text-ink-faint">
-            {deploy?.service} {deploy?.version} · deployed {deploy ? clock(deploy.at) : '—'} ·{' '}
-            {ok ? 'approved by you' : 'dismissed by you'}
+      <section className={`rollback-panel decision-complete ${flash.className}`} aria-live="polite">
+        <div className="decision-state-icon">
+          {approved ? <CheckCircle size={22} weight="fill" /> : <XCircle size={22} weight="fill" />}
+        </div>
+        <div>
+          <span className="eyebrow">Human decision recorded</span>
+          <h2>{approved ? 'Rollback applied' : 'Rollback declined'}</h2>
+          <p>
+            {approved
+              ? `${deploy?.service} restored to ${deploy?.previousVersion}`
+              : `${deploy?.service} stays on ${deploy?.version}`}{' '}
+            · {applied.deployId}
           </p>
-          {ok && (
-            <p className="mt-1.5 pl-4 text-2xs leading-relaxed text-ink-dim">
+          <p className="decision-meta">
+            {approved ? 'Approved' : 'Declined'} by you at {clock(applied.decidedAt)} UTC
+          </p>
+          {approved && (
+            <p className="decision-meta">
               Post-rollback telemetry through 15:20 is now on the chart and available to every tool.
             </p>
           )}
         </div>
-      </Pane>
+      </section>
     );
   }
 
-  const deploy = DEPLOYS.find((d) => d.id === pending!.deployId);
-  return (
-    <Pane id="rollback" title="Mitigation · awaiting your approval" className="shrink-0 border-b border-line">
-      <div className="border-l-2 border-alert px-3 py-2.5" role="alert" aria-live="assertive">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-xs text-ink">
-            Roll back {pending!.service} {pending!.version}
-          </span>
-          <span className="font-mono text-2xs text-ink-faint">{pending!.deployId}</span>
+  if (!pending) {
+    return (
+      <section className={`rollback-panel empty-decision ${flash.className}`}>
+        <div className="decision-placeholder">
+          <Robot size={21} weight="fill" aria-hidden />
+          <div>
+            <span className="eyebrow">Proposed action</span>
+            <h2>No mitigation proposed</h2>
+            <p>
+              Your agent can investigate and prepare a rollback, but it cannot execute one. When it
+              calls <code>propose_rollback</code>, the request lands here and waits for your click.
+            </p>
+          </div>
         </div>
+      </section>
+    );
+  }
 
-        <p className="mt-1.5 text-2xs leading-relaxed text-ink-dim">{pending!.reason}</p>
-
-        {deploy && <DeployDiff lines={deploy.diff} label={`${deploy.id} · ${deploy.service} ${deploy.version}`} />}
-
-        <div className="mt-2.5 flex items-center gap-2">
-          {/* The one and only path from a proposal to an applied rollback. */}
-          <button
-            type="button"
-            onClick={approveRollback}
-            className="action-hit border border-alert bg-alert px-3 text-xs font-medium text-on-alert hover:bg-alert-deep"
-          >
-            Approve rollback
-          </button>
-          <button
-            type="button"
-            onClick={rejectRollback}
-            className="action-hit border border-line px-3 text-xs text-ink-dim hover:border-line-strong hover:text-ink"
-          >
-            Dismiss
-          </button>
-          <span className="font-mono text-2xs text-ink-faint">agent is waiting</span>
+  const deploy = DEPLOYS.find((item) => item.id === pending.deployId);
+  return (
+    <section
+      className={`rollback-panel pending-decision ${flash.className}`}
+      role="alert"
+      aria-live="assertive"
+    >
+      <div className="proposal-heading">
+        <div>
+          <span className="eyebrow">Proposed action</span>
+          <h2>Roll back {pending.service}</h2>
+          <p className="proposal-reason">{pending.reason}</p>
         </div>
       </div>
-    </Pane>
+
+      {deploy && (
+        <>
+          <div className="version-change" aria-label="Version change">
+            <div>
+              <span>Current</span>
+              <strong>{deploy.version}</strong>
+            </div>
+            <ArrowRight size={20} />
+            <div>
+              <span>Target</span>
+              <strong>{deploy.previousVersion}</strong>
+            </div>
+          </div>
+
+          <div className="proposal-changes">
+            <p>{deploy.id} shipped {clock(deploy.at)} by {deploy.author}</p>
+            <ul>
+              {deploy.changes.map((change) => (
+                <li key={change}>{change}</li>
+              ))}
+            </ul>
+          </div>
+
+          <DeployDiff lines={deploy.diff} label={`${deploy.id} · ${deploy.service} ${deploy.version}`} />
+        </>
+      )}
+
+      <div className="approval-gate">
+        <span>
+          <LockKey size={16} weight="fill" /> Human approval required
+        </span>
+        {/* The one and only path from a proposal to an applied rollback. */}
+        <button type="button" className="approve-button" onClick={approveRollback}>
+          Approve rollback to {deploy?.previousVersion ?? 'the previous version'}
+        </button>
+        <button type="button" className="decline-button" onClick={rejectRollback}>
+          Decline proposal
+        </button>
+      </div>
+    </section>
   );
 }

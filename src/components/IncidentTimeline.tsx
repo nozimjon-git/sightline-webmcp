@@ -1,5 +1,6 @@
+import { Robot, User } from '@phosphor-icons/react';
 import { useStore, type Severity } from '../store';
-import { Empty, Pane } from './Pane';
+import { Pane } from './Pane';
 
 /** Same discipline as the service rail: one hue, weight carries severity. */
 function SeverityMark({ severity }: { severity: Severity }) {
@@ -9,14 +10,19 @@ function SeverityMark({ severity }: { severity: Severity }) {
 }
 
 export function IncidentTimeline() {
+  const mcp = useStore((state) => state.mcp);
   const findings = useStore((s) => s.findings);
   const removeFinding = useStore((s) => s.removeFinding);
   const sorted = [...findings].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  const toolLine =
+    mcp.state === 'connected'
+      ? `WebMCP · ${mcp.toolCount} registered tools · shared live state`
+      : 'No WebMCP host detected · this console is fully usable by hand';
 
   return (
     <Pane
       id="timeline"
-      title="Incident timeline"
+      title={sorted.length ? 'Agent findings' : 'Agent investigation'}
       className={`decision-timeline min-h-0 border-b border-line ${sorted.length ? 'min-h-[9rem] flex-1' : 'shrink-0'}`}
       bodyClassName="overflow-y-auto"
       controls={
@@ -28,11 +34,18 @@ export function IncidentTimeline() {
       }
     >
       {sorted.length === 0 ? (
-        <Empty>No findings pinned yet. Ask your agent to investigate.</Empty>
+        <div className="agent-empty-state">
+          <Robot size={20} weight="fill" aria-hidden />
+          <div>
+            <strong>Ready to investigate this incident</strong>
+            <p>Ask your agent to trace the p99 spike. Whatever it pins lands here, stamped with who pinned it and when.</p>
+            <span>{toolLine}</span>
+          </div>
+        </div>
       ) : (
         <ol>
           {sorted.map((f) => (
-            <li key={f.id} className="group border-b border-line px-3 py-2">
+            <li key={f.id} className="finding-row group border-b border-line px-3 py-2">
               <div className="flex gap-2">
                 <SeverityMark severity={f.severity} />
                 <div className="min-w-0 flex-1">
@@ -49,12 +62,16 @@ export function IncidentTimeline() {
                     </button>
                   </div>
                   <p className="mt-1 text-2xs leading-relaxed text-ink-dim">{f.evidence}</p>
-                  <p className="mt-1 font-mono text-2xs text-ink-faint">
+                  <p className="finding-provenance mt-1 font-mono text-2xs text-ink-faint">
+                    {f.pinnedBy === 'agent' ? (
+                      <Robot size={13} weight="fill" className="text-agent" aria-hidden />
+                    ) : (
+                      <User size={13} weight="fill" aria-hidden />
+                    )}
                     <span className={f.pinnedBy === 'agent' ? 'text-agent' : 'text-ink-dim'}>
-                      {f.pinnedBy === 'agent' ? 'agent' : 'you'}
+                      {f.pinnedBy === 'agent' ? 'pinned by the agent' : 'pinned by you'}
                     </span>
-                    {' · '}
-                    {f.severity}
+                    <span>· {f.severity}</span>
                   </p>
                 </div>
               </div>

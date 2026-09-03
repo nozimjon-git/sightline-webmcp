@@ -1,47 +1,44 @@
+import { Article, CheckCircle } from '@phosphor-icons/react';
 import { useStore } from '../store';
-import { Pane } from './Pane';
+import { useTouchFlash } from './Pane';
 
 export function ReportCard() {
-  const report = useStore((s) => s.report);
+  const report = useStore((state) => state.report);
+  const findings = useStore((state) => state.findings);
+  const flash = useTouchFlash('report');
 
   if (!report) {
     return (
-      <Pane id="report" title="Postmortem" className="shrink-0">
-        <p className="px-3 py-2 text-2xs leading-relaxed text-ink-faint">
-          No report drafted. Once findings are pinned, ask your agent to call{' '}
-          <span className="font-mono text-ink-dim">draft_incident_report</span> and the assembled postmortem appears
-          here.
-        </p>
-      </Pane>
+      <section className={`rail-section postmortem-section ${flash.className}`} aria-labelledby="postmortem-title">
+        <header className="rail-section-header">
+          <h2 id="postmortem-title">Postmortem</h2>
+          <span className="state-chip">Not started</span>
+        </header>
+        <div className="report-empty">
+          <Article size={19} aria-hidden />
+          <div>
+            <p>No report drafted yet.</p>
+            <span>{findings.length ? `${findings.length} finding${findings.length === 1 ? '' : 's'} ready for the agent to assemble.` : 'Pin findings, then ask the agent to draft the report.'}</span>
+          </div>
+        </div>
+      </section>
     );
   }
 
   return (
-    <Pane
-      id="report"
-      title="Postmortem"
-      className="decision-report min-h-[10rem] flex-1 basis-0"
-      bodyClassName="overflow-y-auto"
-      controls={
-        <span className="shrink-0 font-mono text-2xs whitespace-nowrap text-ink-faint">
-          synced · {report.findingCount} findings
-        </span>
-      }
-    >
-      <div className="px-3 py-2">
+    <section className={`rail-section postmortem-section report-ready ${flash.className}`} aria-labelledby="postmortem-title">
+      <header className="rail-section-header">
+        <h2 id="postmortem-title">Postmortem</h2>
+        <span className="state-chip is-ready"><CheckCircle size={13} weight="fill" /> Synced</span>
+      </header>
+      <div className="report-scroll">
         {report.sections.map((section) => (
-          <section key={section.heading} className="mb-3 last:mb-0">
-            <h3 className="mb-1 border-b border-line pb-0.5 text-2xs font-medium text-ink">{section.heading}</h3>
-            <ul className="space-y-1">
-              {section.body.map((line, i) => (
-                <li key={i} className="whitespace-pre-line font-mono text-2xs leading-relaxed text-ink-dim">
-                  {line}
-                </li>
-              ))}
-            </ul>
+          <section key={section.heading}>
+            <h3>{section.heading}</h3>
+            {section.body.map((line, index) => <p key={index}>{line}</p>)}
           </section>
         ))}
       </div>
-    </Pane>
+    </section>
   );
 }

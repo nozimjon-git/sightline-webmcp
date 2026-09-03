@@ -1,41 +1,73 @@
-import { useStore } from '../store';
+import { ArrowRight, Robot, User } from '@phosphor-icons/react';
+import { useState, type FormEvent } from 'react';
+import { clock } from '../data/incident';
+import { nowIso, useStore } from '../store';
 
-/**
- * The instrument strip along the bottom: the last few things either party did,
- * newest on the left. It is the only place agent and human actions appear in
- * one sequence, which is what makes a tool call legible on video.
- */
 export function ActivityTicker() {
-  const activity = useStore((s) => s.activity);
-  const mcp = useStore((s) => s.mcp);
+  const [note, setNote] = useState('');
+  const activity = useStore((state) => state.activity);
+  const mcp = useStore((state) => state.mcp);
+  const addFinding = useStore((state) => state.addFinding);
+  const now = useStore(nowIso);
+
+  const addNote = (event: FormEvent) => {
+    event.preventDefault();
+    const value = note.trim();
+    if (!value) return;
+    addFinding({
+      title: 'Human note',
+      evidence: value,
+      timestamp: clock(now),
+      severity: 'info',
+      pinnedBy: 'human',
+    });
+    setNote('');
+  };
 
   return (
-    <footer className="activity-ticker flex min-h-8 shrink-0 items-center gap-3 overflow-hidden border-t border-line bg-ground px-3" role="status" aria-live="polite" aria-atomic="false">
-      <span className="shrink-0 text-2xs text-ink-faint">activity</span>
-      {activity.length === 0 ? (
-        <span className="font-mono text-2xs text-ink-faint">
-          {mcp.state === 'connected'
-            ? 'waiting for the agent — try "Checkout p99 is spiking. Find out why."'
-            : 'no agent host detected; the console is fully usable by hand'}
+    <footer className="activity-panel" aria-label="Shared incident activity">
+      <div className="activity-heading">
+        <div>
+          <h2>Activity</h2>
+          <span>WebMCP session with you</span>
+        </div>
+        <span className={`activity-live ${mcp.state === 'connected' ? 'is-connected' : ''}`}>
+          <i aria-hidden /> {mcp.state === 'connected' ? 'Agent connected' : 'No agent host'}
         </span>
-      ) : (
-        <ol className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
-          {activity.slice(0, 6).map((e) => (
-            <li key={e.id} className="flex shrink-0 items-baseline gap-1.5 font-mono text-2xs">
-              <span className={e.actor === 'agent' ? 'text-agent' : 'text-ink-dim'}>
-                {e.actor === 'agent' ? 'agent' : 'you'}
+      </div>
+
+      <ol className="activity-list" aria-live="polite">
+        {activity.length === 0 ? (
+          <li className="activity-empty">
+            <Robot size={16} weight="fill" />
+            <span>{mcp.state === 'connected' ? 'The agent is ready. Ask it to investigate the checkout p99 spike.' : 'No agent host detected. Explore the incident by hand or connect a WebMCP host.'}</span>
+          </li>
+        ) : (
+          activity.slice(0, 4).map((entry) => (
+            <li key={entry.id}>
+              <span className={`activity-actor ${entry.actor}`}>
+                {entry.actor === 'agent' ? <Robot size={14} weight="fill" /> : <User size={14} weight="fill" />}
+                {entry.actor === 'agent' ? 'Agent' : 'You'}
               </span>
-              <span className={e.ok ? 'text-ink-dim' : 'text-alert'}>{e.label}</span>
-              <span className="max-w-[30ch] truncate text-ink-faint">{e.detail}</span>
-              {activity.indexOf(e) < Math.min(activity.length, 6) - 1 && <span className="text-line-strong">/</span>}
+              <span className={entry.ok ? '' : 'text-alert'}>{entry.label}</span>
+              <span className="activity-detail">{entry.detail}</span>
             </li>
-          ))}
-        </ol>
-      )}
-      <span className="ml-auto hidden shrink-0 items-center gap-1.5 border-l border-line pl-3 font-mono text-2xs text-ink-faint sm:flex">
-        <kbd className="border border-line px-1 text-agent">?</kbd>
-        keys
-      </span>
+          ))
+        )}
+      </ol>
+
+      <form className="activity-composer" onSubmit={addNote}>
+        <input
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+          placeholder="Add a note to the incident…"
+          aria-label="Add a human note to the incident timeline"
+          maxLength={240}
+        />
+        <button type="submit" disabled={!note.trim()} aria-label="Add note">
+          <ArrowRight size={16} weight="bold" />
+        </button>
+      </form>
     </footer>
   );
 }

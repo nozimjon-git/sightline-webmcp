@@ -1,95 +1,90 @@
+import { Check, Copy, DotsThree, Pulse, ShareNetwork } from '@phosphor-icons/react';
+import { useState } from 'react';
 import { clock } from '../data/incident';
 import { incidentMeta, nowIso, useStore } from '../store';
-import { useTouchFlash } from './Pane';
 
 function McpBadge() {
-  const mcp = useStore((s) => s.mcp);
-  const tone =
-    mcp.state === 'connected' ? 'text-agent' : mcp.state === 'error' ? 'text-alert' : 'text-ink-faint';
-  const label =
-    mcp.state === 'connected'
-      ? `${mcp.toolCount} tools · ${mcp.api}`
-      : mcp.state === 'checking'
-        ? 'looking for a host…'
-        : 'no host — running human-only';
-  return (
-    <div
-      className="header-badge flex shrink-0 items-center gap-2"
-      title={mcp.message ?? mcp.api}
-      role="status"
-      aria-live="polite"
-    >
-      <span className="text-2xs text-ink-faint">webmcp</span>
-      <span
-        className={`h-1.5 w-1.5 shrink-0 ${mcp.state === 'connected' ? 'bg-agent' : mcp.state === 'error' ? 'bg-alert' : 'bg-line-strong'}`}
-        aria-hidden
-      />
-      <span className={`header-badge-label font-mono text-2xs whitespace-nowrap ${tone}`}>{label}</span>
-    </div>
-  );
-}
+  const mcp = useStore((state) => state.mcp);
+  const connected = mcp.state === 'connected';
+  const label = connected
+    ? `Connected · ${mcp.toolCount} tools`
+    : mcp.state === 'checking'
+      ? 'Connecting…'
+      : 'Human-only mode';
 
-/** Flashes when the agent calls get_current_view. The handoff made visible. */
-function HandoffChip() {
-  const flash = useTouchFlash('handoff');
-  const prov = useStore((s) => s.provenance.handoff);
   return (
-    <div
-      className={`relative flex shrink-0 items-center gap-2 whitespace-nowrap border border-line px-2 py-1 ${flash.className}`}
-      title="The agent reads your current selection through get_current_view"
-    >
-      <span className="text-2xs text-ink-faint">view handoff</span>
-      <span className={`font-mono text-2xs tnum ${prov ? 'text-agent' : 'text-ink-faint'}`}>
-        {prov ? new Date(prov.at).toLocaleTimeString('en-GB', { hour12: false }) : '—'}
-      </span>
+    <div className="mcp-status" title={mcp.message ?? mcp.api} role="status" aria-live="polite">
+      <span className={`mcp-dot ${connected ? 'is-connected' : ''}`} aria-hidden />
+      <span>WebMCP</span>
+      <span className="mcp-detail">{label}</span>
     </div>
   );
 }
 
 export function Header() {
-  const selectedWindow = useStore((s) => s.window);
-  const applied = useStore((s) => s.appliedRollback);
+  const [copied, setCopied] = useState(false);
+  const applied = useStore((state) => state.appliedRollback);
   const now = useStore(nowIso);
-  const resetIncident = useStore((s) => s.resetIncident);
+  const resetIncident = useStore((state) => state.resetIncident);
   const live = applied?.decision !== 'approved';
 
+  const share = async () => {
+    try {
+      await navigator.clipboard.writeText(globalThis.location.href);
+      setCopied(true);
+      globalThis.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   return (
-    <header className="app-header flex min-h-14 shrink-0 items-center gap-4 border-b border-line bg-ground px-4 py-2.5">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <span
-          className={`h-6 w-1 ${live ? 'bg-alert' : 'bg-agent'}`}
-          aria-hidden
-        />
-        <div className="leading-tight">
-          <div className="flex items-baseline gap-2">
-            <span className="font-mono text-xs font-medium text-ink">{incidentMeta.id}</span>
-            <span className="truncate text-sm text-ink">{incidentMeta.title}</span>
-          </div>
-          <div className="font-mono text-2xs text-ink-faint tnum">
-            {live ? 'active' : 'mitigated'} · declared {clock(incidentMeta.declaredAt)} · commander {incidentMeta.commander}
-          </div>
-        </div>
+    <header className="app-header">
+      <a className="brand" href="#investigation" aria-label="Sightline incident workspace">
+        <Pulse size={20} weight="bold" />
+        <span>SIGHTLINE</span>
+      </a>
+
+      <nav className="incident-breadcrumb" aria-label="Incident breadcrumb">
+        <span className="breadcrumb-parent">Incidents</span>
+        <span className="breadcrumb-separator" aria-hidden>/</span>
+        <span className="incident-id">{incidentMeta.id}</span>
+        <h1>{incidentMeta.title}</h1>
+      </nav>
+
+      <div className="incident-status-block">
+        <span className={`incident-status ${live ? 'is-live' : 'is-mitigated'}`}>
+          <span aria-hidden />
+          {live ? 'ACTIVE' : 'MITIGATED'}
+        </span>
+        <span className="declared-copy">
+          Declared {clock(incidentMeta.declaredAt)} by {incidentMeta.commander} · now {clock(now)} UTC
+        </span>
       </div>
 
-      <div className="min-w-3 flex-1" />
-
-      <div className="header-window hidden items-baseline gap-2 whitespace-nowrap md:flex">
-        <span className="text-2xs text-ink-faint">window</span>
-        <span className="font-mono text-xs text-ink tnum">{selectedWindow.label}</span>
-        <span className="text-2xs text-ink-faint">· now {clock(now)} UTC</span>
+      <div className="header-actions">
+        <McpBadge />
+        <button type="button" className="header-action" onClick={share} aria-label="Copy incident link">
+          {copied ? <Check size={16} weight="bold" /> : <ShareNetwork size={16} />}
+          <span>{copied ? 'Copied' : 'Share'}</span>
+        </button>
+        <details className="incident-menu">
+          <summary className="header-action" aria-label="Incident actions">
+            <DotsThree size={20} weight="bold" />
+          </summary>
+          <div className="incident-menu-popover">
+            <button
+              type="button"
+              onClick={() => {
+                if (globalThis.confirm('Reset the incident replay and clear this tab’s saved investigation?')) resetIncident();
+              }}
+            >
+              <Copy size={15} />
+              Reset incident replay
+            </button>
+          </div>
+        </details>
       </div>
-
-      <HandoffChip />
-      <McpBadge />
-      <button
-        type="button"
-        onClick={() => {
-          if (globalThis.confirm('Reset the incident replay and clear this tab’s saved investigation?')) resetIncident();
-        }}
-        className="header-reset control-hit shrink-0 border border-line px-2.5 font-mono text-2xs whitespace-nowrap text-ink-dim hover:border-line-strong hover:text-ink"
-      >
-        reset replay
-      </button>
     </header>
   );
 }
